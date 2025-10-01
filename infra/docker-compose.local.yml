@@ -59,8 +59,7 @@ services:
   kong:
     image: kong:2.8
     depends_on:
-      kong-migrations:
-        condition: service_completed_successfully
+      - kong-migrations
     environment:
       - KONG_DATABASE=postgres
       - KONG_PG_HOST=kong-db
@@ -72,7 +71,7 @@ services:
       - KONG_ADMIN_ERROR_LOG=/dev/stderr
       - KONG_ADMIN_LISTEN=0.0.0.0:8001, 0.0.0.0:8444 ssl
       - KONG_DECLARATIVE_CONFIG=/app/kong-configuration.yaml
-    command: "sh -c 'deck sync -s /app/kong-configuration.yaml && kong start'"
+    command: "kong start"
     ports:
       - "8000:8000"
       - "8443:8443"
@@ -158,7 +157,7 @@ services:
     environment:
       - GIT_REPO_PATH=/app
     volumes:
-      - ../src:/app/src_code # Mount the host's src directory to give it modification access
+      - ..:/app # Mount the entire project root to /app for Git and code access
 
 volumes:
   neo4j_data:

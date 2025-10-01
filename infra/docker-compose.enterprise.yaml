@@ -1,0 +1,342 @@
+version: '3.9'
+
+x-common-variables: &common-variables
+  ENVIRONMENT: production
+  LOG_LEVEL: info
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+  PROMETHEUS_URL: http://prometheus:9090
+
+networks:
+  nexus-network:
+    driver: bridge
+
+volumes:
+  prometheus-data: {}
+  grafana-data: {}
+  neo4j-data: {}
+  timescaledb-data: {}
+  vault-data: {}
+  loki-data: {}
+  pyroscope-data: {}
+  minio-data: {}
+  kong_db_data: {}
+  gitea-data: {}
+  gitea-db-data: {}
+
+services:
+  # ============================================
+  # Core Intelligence Services
+  # ============================================
+
+  meta-controller:
+    build: ../src/meta_controller
+    image: nexus/meta-controller:latest
+    container_name: nexus-meta-controller
+    hostname: meta-controller
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "6000:6000"
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: meta-controller
+      VAULT_ADDR: http://vault:8200
+      CODE_MODIFIER_URL: http://code-modifier:6001
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+
+  code-modifier:
+    build: ../src/code_modifier
+    image: nexus/code-modifier:latest
+    container_name: nexus-code-modifier
+    hostname: code-modifier
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "6001:6001"
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: code-modifier
+      GIT_REPO_PATH: /app
+    volumes:
+      - ../:/app
+    depends_on:
+      - meta-controller
+
+  orchestrator:
+    build: ../src/orchestrator
+    image: nexus/orchestrator:latest
+    container_name: nexus-orchestrator
+    hostname: orchestrator
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: orchestrator
+      REDIS_HOST: redis
+      KNOWLEDGE_RETRIEVER_URL: http://knowledge-retriever:5003
+      LLM_ADAPTER_URL: http://llm_adapter_mock:5006
+      EXECUTION_SANDBOX_URL: http://execution_sandbox:5005
+    depends_on:
+      - redis
+      - knowledge-retriever
+      - llm_adapter_mock
+
+  knowledge-retriever:
+    build: ../src/knowledge_retriever
+    image: nexus/knowledge-retriever:latest
+    container_name: nexus-knowledge-retriever
+    hostname: knowledge-retriever
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: knowledge-retriever
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  execution-sandbox:
+    build: ../src/execution_sandbox
+    image: nexus/execution-sandbox:latest
+    container_name: nexus-execution-sandbox
+    hostname: execution-sandbox
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  llm_adapter_mock:
+    build: ../src/llm_adapter_mock
+    image: nexus/llm-adapter-mock:latest
+    container_name: nexus-llm-adapter-mock
+    hostname: llm_adapter_mock
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: llm-adapter-mock
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+  # ============================================
+  # Observability Stack
+  # ============================================
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: nexus-prometheus
+    hostname: prometheus
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: nexus-grafana
+    hostname: grafana
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    container_name: nexus-jaeger
+    hostname: jaeger
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+  pyroscope:
+    image: grafana/pyroscope:1.1.5
+    container_name: nexus-pyroscope
+    hostname: pyroscope
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "4040:4040"
+    command:
+      - "server"
+
+  # ============================================
+  # Data Layer
+  # ============================================
+
+  neo4j:
+    image: neo4j:5.14-enterprise
+    container_name: nexus-neo4j
+    hostname: neo4j
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - NEO4JLABS_PLUGINS=["apoc", "graph-data-science"]
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:7474"]
+      interval: 30s
+      start_period: 60s
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: nexus-redis
+    hostname: redis
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+
+  # ============================================
+  # Security & API Gateway
+  # ============================================
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: nexus-vault
+    hostname: vault
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=root
+      - VAULT_ADDR=http://127.0.0.1:8200
+    cap_add:
+      - IPC_LOCK
+
+  kong-db:
+    image: postgres:9.6
+    container_name: nexus-kong-db
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    environment:
+      - POSTGRES_USER=kong
+      - POSTGRES_DB=kong
+      - POSTGRES_PASSWORD=kong
+    volumes:
+      - kong_db_data:/var/lib/postgresql/data
+
+  kong-migrations:
+    image: kong:2.8
+    container_name: nexus-kong-migrations
+    restart: on-failure
+    networks:
+      - nexus-network
+    depends_on:
+      - kong-db
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=kong-db
+      - KONG_PG_USER=kong
+      - KONG_PG_PASSWORD=kong
+    command: "kong migrations bootstrap"
+
+  kong:
+    image: kong:2.8
+    container_name: nexus-kong
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=kong-db
+      - KONG_PG_USER=kong
+      - KONG_PG_PASSWORD=kong
+      - KONG_DECLARATIVE_CONFIG=/app/kong-configuration.yaml
+    command: "kong start"
+    volumes:
+      - ./api-gateway:/app
+    depends_on:
+      - kong-migrations
+      - orchestrator
+      - meta-controller
+
+  gitea-db:
+    image: postgres:16-alpine
+    container_name: nexus-gitea-db
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    environment:
+      - POSTGRES_DB=gitea
+      - POSTGRES_USER=gitea
+      - POSTGRES_PASSWORD=gitea
+    volumes:
+      - gitea-db-data:/var/lib/postgresql/data
+
+  gitea:
+    image: gitea/gitea:1.21
+    container_name: nexus-gitea
+    hostname: gitea
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "3002:3000"
+      - "2222:22"
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=gitea-db:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=gitea
+    volumes:
+      - gitea-data:/data
+    depends_on:
+      - gitea-db
