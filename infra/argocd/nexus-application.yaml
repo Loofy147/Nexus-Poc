@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexus-production
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default # Assumes a 'default' ArgoCD project
+  source:
+    repoURL: https://github.com/Loofy147/Nexus-Poc.git # Placeholder for your repo
+    targetRevision: main
+    path: infra/kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nexus-production
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+  revisionHistoryLimit: 10

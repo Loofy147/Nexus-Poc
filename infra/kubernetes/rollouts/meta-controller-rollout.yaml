@@ -1,0 +1,86 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: meta-controller
+  namespace: nexus-production
+spec:
+  replicas: 3
+  strategy:
+    canary:
+      # This strategy will create a canary version and gradually shift traffic to it.
+      # It relies on a service mesh (like Istio) to manage the traffic split.
+      steps:
+      # 1. Deploy the canary but send no traffic to it initially.
+      - setWeight: 0
+      - pause: {} # Pause for manual verification if needed
+
+      # 2. Shift 10% of traffic to the canary and run analysis.
+      - setWeight: 10
+      - pause: {duration: 5m} # Let it run for 5 minutes to gather metrics.
+      - analysis:
+          templates:
+            - templateName: success-rate-analysis
+            - templateName: latency-analysis
+          args:
+            - name: service-name
+              value: meta-controller
+
+      # 3. Shift 50% of traffic and run analysis again.
+      - setWeight: 50
+      - pause: {duration: 10m}
+      - analysis:
+          templates:
+            - templateName: success-rate-analysis
+            - templateName: latency-analysis
+          args:
+            - name: service-name
+              value: meta-controller
+
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: nexus
+      component: meta-controller
+  template:
+    metadata:
+      labels:
+        app: nexus
+        component: meta-controller
+    spec:
+      # This spec is identical to the original Deployment spec.
+      serviceAccountName: nexus-meta-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: meta-controller
+        # The image tag will be updated by the CI/CD pipeline for new versions.
+        image: nexus-registry/nexus-meta-controller:2.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 6000
+          name: http
+        - containerPort: 9090
+          name: metrics
+        envFrom:
+        - configMapRef:
+            name: nexus-config
+        - secretRef:
+            name: nexus-secrets
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "4000m"
+            memory: "8Gi"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 6000
+          initialDelaySeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 6000

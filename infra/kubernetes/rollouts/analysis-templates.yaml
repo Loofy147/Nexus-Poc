@@ -1,0 +1,46 @@
+# AnalysisTemplate for Success Rate
+# This template checks if the success rate (non-5xx responses) is above 95%.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate-analysis
+  namespace: nexus-production
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: success-rate
+      interval: 1m
+      count: 3
+      successCondition: result[0] >= 0.95
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus.nexus-observability.svc.cluster.local:9090
+          query: |
+            sum(rate(flask_http_request_duration_seconds_count{job="{{args.service-name}}", status!~"5.*"}[1m]))
+            /
+            sum(rate(flask_http_request_duration_seconds_count{job="{{args.service-name}}"}[1m]))
+
+---
+# AnalysisTemplate for Latency
+# This template checks if the p95 latency is below 500ms.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: latency-analysis
+  namespace: nexus-production
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: p95-latency
+      interval: 1m
+      count: 3
+      successCondition: result[0] < 0.5
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus.nexus-observability.svc.cluster.local:9090
+          query: |
+            histogram_quantile(0.95, sum(rate(flask_http_request_duration_seconds_bucket{job="{{args.service-name}}"}[1m])) by (le))
