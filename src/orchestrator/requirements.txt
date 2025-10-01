@@ -1,7 +1,7 @@
-Flask==2.2.2
-requests==2.28.1
+Flask==2.2.5
+requests==2.32.4
 prometheus-flask-exporter==0.20.3
 opentelemetry-distro==0.38b0
 opentelemetry-exporter-otlp==1.17.0
 pyroscope-io==0.8.1
-redis==4.3.4
+redis==4.4.4
