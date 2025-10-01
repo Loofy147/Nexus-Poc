@@ -1,0 +1,41 @@
+# Development and Linting Tools
+pre-commit==3.3.3
+black==24.4.2
+isort==5.13.2
+pylint==3.1.0
+bandit==1.7.9
+GitPython==3.1.41
+
+# Common Application Dependencies
+Flask==2.2.5
+requests==2.32.4
+redis==4.4.4
+
+# Orchestrator & Observability
+prometheus-flask-exporter==0.20.3
+opentelemetry-distro==0.38b0
+opentelemetry-exporter-otlp==1.17.0
+pyroscope-io==0.8.1
+
+# Execution Sandbox
+docker==6.0.1
+
+# LLM Adapter
+openai==0.28.1
+
+# Meta Controller & Scientific Stack (Updated for Python 3.12+ compatibility)
+# NOTE: Causal analysis packages are temporarily removed due to Python 3.12 incompatibility.
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.0
+networkx==3.1
+statsmodels==0.14.2
+z3-solver==4.12.1.0
+arch==5.3.1
+
+# Knowledge Retriever (Updated for Python 3.12+ compatibility)
+neo4j==5.2.0
+faiss-cpu==1.8.0
+sentence-transformers==2.7.0
+spacy==3.7.5
+langchain==0.2.5

@@ -1,25 +1,30 @@
-import os
-import requests
-import re
 import json
+import os
+import re
+
+import requests
 
 # Import and setup observability tools before anything else
 from observability import setup_observability
+
 setup_observability()
 
+from caching import cached
 from flask import Flask, jsonify, request
 from prometheus_flask_exporter import PrometheusMetrics
-from caching import cached
 
 app = Flask(__name__)
 metrics = PrometheusMetrics(app)
 
 # --- Service URLs ---
 # Updated to reflect the new enterprise-grade services
-KNOWLEDGE_RETRIEVER_URL = os.environ.get("KNOWLEDGE_RETRIEVER_URL", "http://knowledge_retriever:5003")
+KNOWLEDGE_RETRIEVER_URL = os.environ.get(
+    "KNOWLEDGE_RETRIEVER_URL", "http://knowledge_retriever:5003"
+)
 MEMORY_LAYER_URL = os.environ.get("MEMORY_LAYER_URL", "http://localhost:5004")
 EXECUTION_SANDBOX_URL = os.environ.get("EXECUTION_SANDBOX_URL", "http://localhost:5005")
 LLM_ADAPTER_URL = os.environ.get("LLM_ADAPTER_URL", "http://localhost:5006")
+
 
 def extract_code(text):
     """Extracts python code from a markdown code block."""
@@ -28,24 +33,28 @@ def extract_code(text):
         return match.group(1)
     return None
 
+
 def format_knowledge_for_prompt(knowledge_context: dict) -> str:
     """Formats the rich context from the EnterpriseGraphRAG for the LLM."""
     prompt_context = "Vector Search Results:\n"
-    for hit in knowledge_context.get('vector_search_results', []):
-        prompt_context += f"- Chunk ID: {hit.get('chunk_id')}, Score: {hit.get('score')}\n"
+    for hit in knowledge_context.get("vector_search_results", []):
+        prompt_context += (
+            f"- Chunk ID: {hit.get('chunk_id')}, Score: {hit.get('score')}\n"
+        )
 
     prompt_context += "\nGraph Reasoning Results:\n"
-    for path in knowledge_context.get('graph_reasoning_results', []):
+    for path in knowledge_context.get("graph_reasoning_results", []):
         prompt_context += f"- Path: {' -> '.join(path.get('path', []))}, Explanation: {path.get('explanation')}\n"
 
     return prompt_context
 
-@app.route('/api/v1/query', methods=['POST'])
+
+@app.route("/api/v1/query", methods=["POST"])
 def query_handler():
     data = request.get_json()
-    user_id = data.get('user_id')
-    session_id = data.get('session_id')
-    query = data.get('query')
+    user_id = data.get("user_id")
+    session_id = data.get("session_id")
+    query = data.get("query")
 
     if not all([user_id, session_id, query]):
         return jsonify({"error": "user_id, session_id, and query are required"}), 400
@@ -54,8 +63,10 @@ def query_handler():
 
     # 1. Retrieve memory
     try:
-        memory_payload = {'user_id': user_id, 'session_id': session_id}
-        memory_response = requests.post(f"{MEMORY_LAYER_URL}/memory/retrieve", json=memory_payload)
+        memory_payload = {"user_id": user_id, "session_id": session_id}
+        memory_response = requests.post(
+            f"{MEMORY_LAYER_URL}/memory/retrieve", json=memory_payload, timeout=5
+        )
         session_history = memory_response.json()
         print(f"Orchestrator: Retrieved {len(session_history)} events from memory.")
     except requests.exceptions.RequestException as e:
@@ -70,10 +81,12 @@ def query_handler():
     try:
         formatted_context = format_knowledge_for_prompt(knowledge_context)
         llm_prompt = f"You are an expert assistant. Use the following context to answer the user's query.\n\n--- Context ---\n{formatted_context}\n--- History ---\n{session_history}\n\n--- Query ---\n{query}\n\nBased on the query, if a user asks to run code, provide a Python script in a markdown block. Otherwise, provide a helpful and context-aware answer."
-        llm_payload = {'prompt': llm_prompt}
-        llm_response = requests.post(f"{LLM_ADAPTER_URL}/llm/generate", json=llm_payload)
+        llm_payload = {"prompt": llm_prompt}
+        llm_response = requests.post(
+            f"{LLM_ADAPTER_URL}/llm/generate", json=llm_payload, timeout=60
+        )
         llm_result = llm_response.json()
-        llm_answer = llm_result.get('answer')
+        llm_answer = llm_result.get("answer")
         print("Orchestrator: Received intelligent response from LLM Adapter.")
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"Failed to connect to LLM Adapter: {e}"}), 503
@@ -84,18 +97,33 @@ def query_handler():
 
     if code_to_execute:
         try:
-            print("Orchestrator: Code found. Dispatching to hardened Execution Sandbox.")
+            print(
+                "Orchestrator: Code found. Dispatching to hardened Execution Sandbox."
+            )
             execution_payload = {"language": "python", "code": code_to_execute}
-            exec_response = requests.post(f"{EXECUTION_SANDBOX_URL}/execute", json=execution_payload)
+            exec_response = requests.post(
+                f"{EXECUTION_SANDBOX_URL}/execute", json=execution_payload, timeout=30
+            )
             execution_result = exec_response.json()
             print("Orchestrator: Received result from hardened Execution Sandbox.")
         except requests.exceptions.RequestException as e:
-            return jsonify({"error": f"Failed to connect to Execution Sandbox: {e}"}), 503
+            return (
+                jsonify({"error": f"Failed to connect to Execution Sandbox: {e}"}),
+                503,
+            )
 
     # 5. Store event in memory
     try:
-        event_payload = {'user_id': user_id, 'session_id': session_id, 'event': {'query': query, 'response': llm_result, 'execution': execution_result}}
-        requests.post(f"{MEMORY_LAYER_URL}/memory/store", json=event_payload)
+        event_payload = {
+            "user_id": user_id,
+            "session_id": session_id,
+            "event": {
+                "query": query,
+                "response": llm_result,
+                "execution": execution_result,
+            },
+        }
+        requests.post(f"{MEMORY_LAYER_URL}/memory/store", json=event_payload, timeout=5)
         print("Orchestrator: Stored event in memory.")
     except requests.exceptions.RequestException as e:
         print(f"Orchestrator: Could not store event in Memory Layer: {e}")
@@ -105,21 +133,24 @@ def query_handler():
         "query": query,
         "llm_answer": llm_answer,
         "execution_result": execution_result,
-        "knowledge_source": "EnterpriseGraphRAG"
+        "knowledge_source": "EnterpriseGraphRAG",
     }
 
     return jsonify(final_response)
 
-@cached(ttl=600) # Cache results for 10 minutes
+
+@cached(ttl=600)  # Cache results for 10 minutes
 def get_knowledge_context(query: str) -> dict:
     """
     Retrieves knowledge context from the knowledge_retriever service.
     This function is decorated with a cache to improve performance.
     """
     try:
-        knowledge_payload = {'query': query}
-        response = requests.post(f"{KNOWLEDGE_RETRIEVER_URL}/query", json=knowledge_payload)
-        response.raise_for_status() # Raise an exception for bad status codes
+        knowledge_payload = {"query": query}
+        response = requests.post(
+            f"{KNOWLEDGE_RETRIEVER_URL}/query", json=knowledge_payload, timeout=30
+        )
+        response.raise_for_status()  # Raise an exception for bad status codes
         knowledge_context = response.json()
         print("Orchestrator: Retrieved rich context from Knowledge Retriever.")
         return knowledge_context
@@ -127,5 +158,7 @@ def get_knowledge_context(query: str) -> dict:
         print(f"Orchestrator: Error connecting to Knowledge Retriever: {e}")
         return None
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+
+if __name__ == "__main__":
+    # Note: Binding to 0.0.0.0 is for containerized environments.
+    app.run(host="0.0.0.0", port=5001)  # nosec

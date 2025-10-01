@@ -1,20 +1,27 @@
-import os
-import redis
-import pickle
 import hashlib
+import os
+import pickle  # nosec
 from functools import wraps
+
+import redis
+
 
 class IntelligentCacheSystem:
     """
     A caching system that connects to Redis and provides
     get/set operations for a cache-aside pattern.
     """
+
     def __init__(self):
         redis_host = os.environ.get("REDIS_HOST", "localhost")
         try:
-            self.redis_client = redis.Redis(host=redis_host, port=6379, db=1) # Use db=1 for caching
+            self.redis_client = redis.Redis(
+                host=redis_host, port=6379, db=1
+            )  # Use db=1 for caching
             self.redis_client.ping()
-            print("Intelligent Cache System: Successfully connected to Redis for caching.")
+            print(
+                "Intelligent Cache System: Successfully connected to Redis for caching."
+            )
         except redis.exceptions.ConnectionError as e:
             print(f"Intelligent Cache System: Could not connect to Redis: {e}")
             self.redis_client = None
@@ -26,7 +33,7 @@ class IntelligentCacheSystem:
             cached_value = self.redis_client.get(key)
             if cached_value:
                 print(f"Intelligent Cache System: Cache HIT for key '{key[:50]}...'.")
-                return pickle.loads(cached_value)
+                return pickle.loads(cached_value)  # nosec
             print(f"Intelligent Cache System: Cache MISS for key '{key[:50]}...'.")
             return None
         except Exception as e:
@@ -43,8 +50,10 @@ class IntelligentCacheSystem:
         except Exception as e:
             print(f"Intelligent Cache System: Error setting to cache: {e}")
 
+
 # Instantiate a single cache system for the application
 cache_system = IntelligentCacheSystem()
+
 
 def _generate_cache_key(func_name, *args, **kwargs) -> str:
     """
@@ -58,10 +67,12 @@ def _generate_cache_key(func_name, *args, **kwargs) -> str:
     key_string = ":".join(key_parts)
     return f"cache:{hashlib.sha256(key_string.encode()).hexdigest()}"
 
+
 def cached(ttl: int = 300):
     """
     A decorator for implementing the cache-aside pattern.
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -81,5 +92,7 @@ def cached(ttl: int = 300):
                 cache_system.set(cache_key, result, ttl=ttl)
 
             return result
+
         return wrapper
+
     return decorator

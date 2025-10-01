@@ -1,6 +1,8 @@
-import pandas as pd
 from typing import Dict, List
+
+import pandas as pd
 from statsmodels.tsa.stattools import adfuller, kpss
+
 
 class EnterpriseRiskAssessor:
     """
@@ -20,19 +22,25 @@ class EnterpriseRiskAssessor:
         Assesses the stability risk of a set of metrics using time-series analysis.
         A non-stationary metric (e.g., one with a trend) is considered less stable.
         """
-        print(f"Enterprise Risk Assessor: Assessing stability risk for metrics: {affected_metrics}")
+        print(
+            f"Enterprise Risk Assessor: Assessing stability risk for metrics: {affected_metrics}"
+        )
         stability_scores = {}
         overall_risk_level = "LOW"
 
         for metric in affected_metrics:
             if metric not in self.historical_data.columns:
-                stability_scores[metric] = {"error": "Metric not found in historical data."}
+                stability_scores[metric] = {
+                    "error": "Metric not found in historical data."
+                }
                 continue
 
             metric_series = self.historical_data[metric].dropna()
 
-            if len(metric_series) < 20: # Need enough data for meaningful tests
-                stability_scores[metric] = {"error": "Not enough data points for stability analysis."}
+            if len(metric_series) < 20:  # Need enough data for meaningful tests
+                stability_scores[metric] = {
+                    "error": "Not enough data points for stability analysis."
+                }
                 continue
 
             # Perform Augmented Dickey-Fuller test (H0: unit root is present, i.e., non-stationary)
@@ -42,9 +50,10 @@ class EnterpriseRiskAssessor:
             # Perform KPSS test (H0: series is stationary)
             # We suppress a warning that can occur with low p-values
             import warnings
+
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
-                kpss_result = kpss(metric_series, regression='c', nlags="auto")
+                kpss_result = kpss(metric_series, regression="c", nlags="auto")
             kpss_pvalue = kpss_result[1]
 
             # A series is considered stable (stationary) if it rejects the ADF null
@@ -55,13 +64,15 @@ class EnterpriseRiskAssessor:
                 overall_risk_level = "HIGH"
 
             stability_scores[metric] = {
-                'adf_pvalue': adf_pvalue,
-                'kpss_pvalue': kpss_pvalue,
-                'is_stationary': is_stationary,
+                "adf_pvalue": adf_pvalue,
+                "kpss_pvalue": kpss_pvalue,
+                "is_stationary": is_stationary,
             }
 
-        print(f"Enterprise Risk Assessor: Stability assessment complete. Overall risk level: {overall_risk_level}")
+        print(
+            f"Enterprise Risk Assessor: Stability assessment complete. Overall risk level: {overall_risk_level}"
+        )
         return {
-            'overall_risk_level': overall_risk_level,
-            'metric_stability': stability_scores
+            "overall_risk_level": overall_risk_level,
+            "metric_stability": stability_scores,
         }

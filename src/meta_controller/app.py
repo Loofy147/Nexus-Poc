@@ -1,24 +1,25 @@
-import os
-import requests
 import json
-import pandas as pd
+import os
+
 import numpy as np
-from flask import Flask, jsonify, request
-from prometheus_flask_exporter import PrometheusMetrics, Counter
+import pandas as pd
+import requests
+from advanced_metrics import AdvancedMetricsCollector
 
 # Import the new enterprise-grade modules
 from causal_engine import EnterpriseCausalEngine
+from flask import Flask, jsonify, request
+from prometheus_flask_exporter import Counter, PrometheusMetrics
 from risk_assessor import EnterpriseRiskAssessor
-from advanced_metrics import AdvancedMetricsCollector
 
 app = Flask(__name__)
 metrics = PrometheusMetrics(app)
 
 # Define a custom business metric to track meta-controller decisions
 decisions_total = Counter(
-    'nexus_decisions_total',
-    'Total decisions made by the meta-controller',
-    ['decision_type', 'outcome']
+    "nexus_decisions_total",
+    "Total decisions made by the meta-controller",
+    ["decision_type", "outcome"],
 )
 
 PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
@@ -31,7 +32,8 @@ metrics_collector = AdvancedMetricsCollector(prometheus_url=PROMETHEUS_URL)
 # In-memory storage for the current objective
 current_objective = {}
 
-@app.route('/api/v1/objective', methods=['POST'])
+
+@app.route("/api/v1/objective", methods=["POST"])
 def set_objective():
     """
     Sets a high-level strategic goal for the system.
@@ -40,8 +42,17 @@ def set_objective():
     global current_objective
     data = request.get_json()
 
-    if not all(k in data for k in ["goal", "target_metric", "intervention", "affected_metrics"]):
-        return jsonify({"error": "A 'goal', 'target_metric', 'intervention', and 'affected_metrics' list are required."}), 400
+    if not all(
+        k in data for k in ["goal", "target_metric", "intervention", "affected_metrics"]
+    ):
+        return (
+            jsonify(
+                {
+                    "error": "A 'goal', 'target_metric', 'intervention', and 'affected_metrics' list are required."
+                }
+            ),
+            400,
+        )
 
     current_objective = data
     print(f"Meta Controller: New objective set -> {json.dumps(current_objective)}")
@@ -64,67 +75,97 @@ def analyze_and_act():
     metrics_report = metrics_collector.collect_comprehensive_metrics()
 
     # 2. ORIENT (Anomaly Detection & Risk Assessment)
-    if metrics_report['anomalies']:
-        print(f"Meta Controller: DECISION - Critical anomalies detected. Aborting modification cycle. Anomalies: {json.dumps(metrics_report['anomalies'])}")
-        decisions_total.labels(decision_type=current_objective.get("goal"), outcome="ABORTED_ANOMALY").inc()
+    if metrics_report["anomalies"]:
+        print(
+            f"Meta Controller: DECISION - Critical anomalies detected. Aborting modification cycle. Anomalies: {json.dumps(metrics_report['anomalies'])}"
+        )
+        decisions_total.labels(
+            decision_type=current_objective.get("goal"), outcome="ABORTED_ANOMALY"
+        ).inc()
         print("--- META-CONTROLLER: CYCLE END ---\n")
         return
 
     # For this PoC, we will create a simulated DataFrame for the next steps
     # based on the collected metrics. A full implementation would use a proper
     # time-series dataset from a database like TimescaleDB.
-    simulated_historical_data = pd.DataFrame({
-        'latency': np.random.normal(loc=metrics_report['raw_metrics'].get('p95_latency', 0.1), scale=0.05, size=100),
-        'error_rate': np.random.normal(loc=0.01, scale=0.005, size=100).clip(0),
-        'enable_caching': np.random.randint(0, 2, size=100)
-    })
+    simulated_historical_data = pd.DataFrame(
+        {
+            "latency": np.random.normal(
+                loc=metrics_report["raw_metrics"].get("p95_latency", 0.1),
+                scale=0.05,
+                size=100,
+            ),
+            "error_rate": np.random.normal(loc=0.01, scale=0.005, size=100).clip(0),
+            "enable_caching": np.random.randint(0, 2, size=100),
+        }
+    )
 
     risk_assessor = EnterpriseRiskAssessor(simulated_historical_data)
-    stability_assessment = risk_assessor.assess_stability_risk(current_objective.get("affected_metrics", []))
+    stability_assessment = risk_assessor.assess_stability_risk(
+        current_objective.get("affected_metrics", [])
+    )
 
-    print(f"Meta Controller: Risk assessment complete. Result: {json.dumps(stability_assessment)}")
-    if stability_assessment.get('overall_risk_level') == 'HIGH':
-        print("Meta Controller: DECISION - High stability risk detected. Aborting modification cycle.")
-        decisions_total.labels(decision_type=current_objective.get("goal"), outcome="ABORTED_RISK").inc()
+    print(
+        f"Meta Controller: Risk assessment complete. Result: {json.dumps(stability_assessment)}"
+    )
+    if stability_assessment.get("overall_risk_level") == "HIGH":
+        print(
+            "Meta Controller: DECISION - High stability risk detected. Aborting modification cycle."
+        )
+        decisions_total.labels(
+            decision_type=current_objective.get("goal"), outcome="ABORTED_RISK"
+        ).inc()
         print("--- META-CONTROLLER: CYCLE END ---\n")
         return
 
     # 3. DECIDE (Causal Inference)
     causal_decision = causal_engine.analyze_and_decide(
-        metrics_data=simulated_historical_data,
-        strategic_goal=current_objective
+        metrics_data=simulated_historical_data, strategic_goal=current_objective
     )
 
-    print(f"Meta Controller: Causal analysis complete. Decision: {json.dumps(causal_decision)}")
+    print(
+        f"Meta Controller: Causal analysis complete. Decision: {json.dumps(causal_decision)}"
+    )
 
     # 4. ACT: Propose modification if intervention is recommended
     action = causal_decision.get("action", "UNKNOWN")
-    decisions_total.labels(decision_type=current_objective.get("goal"), outcome=action).inc()
+    decisions_total.labels(
+        decision_type=current_objective.get("goal"), outcome=action
+    ).inc()
 
     if action == "APPLY_INTERVENTION":
         print("Meta Controller: ACTING on decision. Proposing code modification.")
         proposal = {
             "service": "orchestrator",
             "type": "causal_optimization",
-            "description": f"Causal engine recommends applying intervention '{causal_decision.get('intervention')}' to affect '{causal_decision.get('target_metric')}' with an expected effect of {causal_decision.get('expected_effect'):.4f}."
+            "description": f"Causal engine recommends applying intervention '{causal_decision.get('intervention')}' to affect '{causal_decision.get('target_metric')}' with an expected effect of {causal_decision.get('expected_effect'):.4f}.",
         }
         propose_modification(proposal)
     else:
-        print(f"Meta Controller: ACTING on decision. Outcome is '{action}'. No intervention required.")
+        print(
+            f"Meta Controller: ACTING on decision. Outcome is '{action}'. No intervention required."
+        )
 
     print("--- META-CONTROLLER: ANALYSIS & DECISION CYCLE COMPLETE ---\n")
+
 
 def propose_modification(proposal):
     """
     Sends a modification proposal to the code_modifier service.
     """
-    print(f"Meta Controller: Sending proposal to Code Modifier -> {json.dumps(proposal)}")
+    print(
+        f"Meta Controller: Sending proposal to Code Modifier -> {json.dumps(proposal)}"
+    )
     try:
-        response = requests.post(f"{CODE_MODIFIER_URL}/propose", json=proposal)
+        response = requests.post(
+            f"{CODE_MODIFIER_URL}/propose", json=proposal, timeout=30
+        )
         response.raise_for_status()
         print("Meta Controller: Proposal sent successfully.")
     except requests.exceptions.RequestException as e:
         print(f"Meta Controller: Failed to send proposal to Code Modifier: {e}")
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=6000)
+
+if __name__ == "__main__":
+    # Note: Binding to 0.0.0.0 is for containerized environments.
+    app.run(host="0.0.0.0", port=6000)  # nosec

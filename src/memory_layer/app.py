@@ -1,5 +1,6 @@
-import os
 import json
+import os
+
 import redis
 from flask import Flask, jsonify, request
 
@@ -16,15 +17,16 @@ except redis.exceptions.ConnectionError as e:
     print(f"Memory Layer: Could not connect to Redis: {e}")
     redis_client = None
 
-@app.route('/memory/store', methods=['POST'])
+
+@app.route("/memory/store", methods=["POST"])
 def store_memory():
     if not redis_client:
         return jsonify({"error": "Memory service is not available."}), 503
 
     data = request.get_json()
-    user_id = data.get('user_id')
-    session_id = data.get('session_id')
-    event = data.get('event')
+    user_id = data.get("user_id")
+    session_id = data.get("session_id")
+    event = data.get("event")
 
     if not all([user_id, session_id, event]):
         return jsonify({"error": "Missing required fields"}), 400
@@ -36,14 +38,15 @@ def store_memory():
     print(f"Memory Layer: Stored event for session '{session_key}' in Redis.")
     return jsonify({"status": "success"}), 201
 
-@app.route('/memory/retrieve', methods=['POST'])
+
+@app.route("/memory/retrieve", methods=["POST"])
 def retrieve_memory():
     if not redis_client:
         return jsonify({"error": "Memory service is not available."}), 503
 
     data = request.get_json()
-    user_id = data.get('user_id')
-    session_id = data.get('session_id')
+    user_id = data.get("user_id")
+    session_id = data.get("session_id")
 
     if not all([user_id, session_id]):
         return jsonify({"error": "Missing required fields"}), 400
@@ -54,9 +57,13 @@ def retrieve_memory():
     events_raw = redis_client.lrange(session_key, 0, -1)
     events = [json.loads(event) for event in events_raw]
 
-    print(f"Memory Layer: Retrieved {len(events)} events for session '{session_key}' from Redis.")
+    print(
+        f"Memory Layer: Retrieved {len(events)} events for session '{session_key}' from Redis."
+    )
     return jsonify(events), 200
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Rename the service to reflect its new implementation
-    app.run(host='0.0.0.0', port=5004)
+    # Note: Binding to 0.0.0.0 is for containerized environments.
+    app.run(host="0.0.0.0", port=5004)  # nosec

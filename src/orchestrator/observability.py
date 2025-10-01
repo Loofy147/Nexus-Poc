@@ -1,7 +1,9 @@
 import os
+
 import pyroscope
 from opentelemetry.distro import OpenTelemetryDistro
 from opentelemetry.instrumentation.auto_instrumentation import get_distro
+
 
 def setup_observability(service_name="orchestrator"):
     """
@@ -25,7 +27,9 @@ def setup_observability(service_name="orchestrator"):
     try:
         pyroscope.configure(
             application_name=f"nexus.{service_name}",
-            server_address=os.environ.get("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040"),
+            server_address=os.environ.get(
+                "PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040"
+            ),
             tags={
                 "service": service_name,
             },
