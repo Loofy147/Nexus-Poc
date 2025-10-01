@@ -32,11 +32,26 @@ Follow these instructions to run the full self-improving NEXUS ecosystem.
 
 ### Testing the Full OODA Loop and Observability Stack
 
-1.  **Populate & Query**:
-    -   Populate Knowledge Base: `curl -X POST http://localhost:5003/populate`
-    -   Generate Performance Data: `curl -X POST http://localhost:5001/api/v1/query -H "Content-Type: application/json" -d '{"user_id": "test", "session_id": "1", "query": "test"}'`
+1.  **Populate Knowledge Base with Documents**:
+    Use the new `/populate` endpoint to ingest text documents into the knowledge retriever. This will trigger the `EnterpriseGraphRAG` engine to chunk the text, extract entities, and build the knowledge graph in Neo4j.
+    ```sh
+    curl -X POST http://localhost:5003/populate \
+    -H "Content-Type: application/json" \
+    -d '{
+        "documents": [
+            "The NEXUS orchestrator is the core of the system.",
+            "The orchestrator communicates with the knowledge retriever to get context."
+        ]
+    }'
+    ```
 
-2.  **Give the System a Strategic Goal**:
+2.  **Generate Performance Data & Ask a Complex Question**:
+    Run a query that requires reasoning across the newly ingested knowledge. This will also generate traces and profiles.
+    ```sh
+    curl -X POST http://localhost:5001/api/v1/query -H "Content-Type: application/json" -d '{"user_id": "test", "session_id": "1", "query": "How is the orchestrator related to the knowledge retriever?"}'
+    ```
+
+3.  **Give the System a Strategic Goal**:
     ```sh
     curl -X POST http://localhost:6000/api/v1/objective -H "Content-Type: application/json" -d '{"goal": "reduce_latency", "target_metric": "latency", "intervention": "enable_caching", "affected_metrics": ["latency", "error_rate"]}'
     ```
@@ -66,7 +81,7 @@ To fully realize the enterprise-grade vision outlined in the initial plan, the f
 | **Meta-Controller**     | 6000   | **The Intelligence Layer.** Orchestrates the OODA loop.             |
 | **Code Modifier**       | 6001   | **The Execution Layer.** Applies safe, validated, versioned changes.|
 | **Orchestrator**        | 5001   | The core workflow engine, instrumented for observability.           |
-| **Knowledge Retriever** | 5003   | Enterprise Graph-RAG service with Neo4j and FAISS.                  |
+| **Knowledge Retriever** | 5003   | **Knowledge Layer.** High-tech Graph-RAG with dynamic ingestion.    |
 | **Execution Sandbox**   | 5005   | Hardened, secure code execution using Docker-in-Docker.             |
 | **LLM Adapter**         | 5006   | Connects to OpenAI to generate intelligent responses.               |
 | **Prometheus**          | 9090   | **The Observability Layer.** Collects performance metrics.          |
