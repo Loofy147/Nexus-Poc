@@ -1,13 +1,56 @@
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'nexus-production'
+    environment: 'production'
 
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "/etc/prometheus/alerts/*.yml"
+
+# Scrape configurations
 scrape_configs:
-  - job_name: 'orchestrator'
-    static_configs:
-      - targets: ['orchestrator:5001']
-  - job_name: 'meta_controller'
-    static_configs:
-      - targets: ['meta_controller:6000']
+  # Prometheus itself
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+
+  # Core NEXUS Services
+  - job_name: 'meta-controller'
+    static_configs:
+      - targets: ['meta-controller:6000']
+  - job_name: 'code-modifier'
+    static_configs:
+      - targets: ['code-modifier:6001']
+  - job_name: 'orchestrator'
+    static_configs:
+      - targets: ['orchestrator:5001']
+  - job_name: 'knowledge-retriever'
+    static_configs:
+      - targets: ['knowledge-retriever:5003']
+  - job_name: 'llm-adapter-mock'
+    static_configs:
+      - targets: ['llm_adapter_mock:5006']
+
+  # Data Layer Exporters (assuming they are running)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121'] # Assumes a redis-exporter service
+  - job_name: 'neo4j'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['neo4j:2004'] # Assumes Neo4j exposes metrics on this port
+
+  # API Gateway
+  - job_name: 'kong'
+    static_configs:
+      - targets: ['kong:8001']
+    metrics_path: '/metrics'

@@ -150,6 +150,7 @@ services:
       - '--web.enable-lifecycle'
     volumes:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/alerts:/etc/prometheus/alerts:ro
       - prometheus-data:/prometheus
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
@@ -196,6 +197,24 @@ services:
       - "4040:4040"
     command:
       - "server"
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: nexus-alertmanager
+    hostname: alertmanager
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
+      interval: 30s
 
   # ============================================
   # Data Layer

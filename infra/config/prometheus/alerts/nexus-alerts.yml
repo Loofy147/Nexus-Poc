@@ -1,0 +1,42 @@
+groups:
+  - name: nexus_performance_alerts
+    rules:
+      - alert: HighP95Latency
+        expr: histogram_quantile(0.95, sum(rate(flask_http_request_duration_seconds_bucket[5m])) by (le, job)) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High P95 Latency on {{ $labels.job }}"
+          description: "The P95 latency for the {{ $labels.job }} service is {{ $value }}s, which exceeds the 500ms threshold."
+
+      - alert: HighErrorRate
+        expr: (sum(rate(flask_http_requests_total{status_code=~"5.."}[5m])) by (job) / sum(rate(flask_http_requests_total[5m])) by (job)) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High Error Rate on {{ $labels.job }}"
+          description: "The error rate for the {{ $labels.job }} service is {{ $value | humanizePercentage }}, which exceeds the 5% threshold."
+
+  - name: nexus_intelligence_alerts
+    rules:
+      - alert: CausalAnalysisFailure
+        expr: rate(nexus_decisions_total{outcome="ABORTED_RISK"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Causal analysis aborted due to high risk"
+          description: "The meta-controller aborted a decision cycle for the '{{ $labels.decision_type }}' goal due to high stability risk."
+
+  - name: nexus_capacity_alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 * (1 - (avg by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~".+"}[5m])))) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU Usage on {{ $labels.container_label_com_docker_compose_service }}"
+          description: "The CPU usage for the {{ $labels.container_label_com_docker_compose_service }} service is over 80%."
