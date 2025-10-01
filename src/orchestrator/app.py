@@ -9,6 +9,7 @@ setup_observability()
 
 from flask import Flask, jsonify, request
 from prometheus_flask_exporter import PrometheusMetrics
+from caching import cached
 
 app = Flask(__name__)
 metrics = PrometheusMetrics(app)
@@ -60,14 +61,10 @@ def query_handler():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"Failed to connect to Memory Layer: {e}"}), 503
 
-    # 2. Retrieve knowledge from the new enterprise-grade retriever
-    try:
-        knowledge_payload = {'query': query}
-        knowledge_response = requests.post(f"{KNOWLEDGE_RETRIEVER_URL}/query", json=knowledge_payload)
-        knowledge_context = knowledge_response.json()
-        print("Orchestrator: Retrieved rich context from Knowledge Retriever.")
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Failed to connect to Knowledge Retriever: {e}"}), 503
+    # 2. Retrieve knowledge from the new enterprise-grade retriever (now cached)
+    knowledge_context = get_knowledge_context(query=query)
+    if knowledge_context is None:
+        return jsonify({"error": "Failed to connect to Knowledge Retriever"}), 503
 
     # 3. Interact with LLM, providing the rich, formatted context
     try:
@@ -112,6 +109,23 @@ def query_handler():
     }
 
     return jsonify(final_response)
+
+@cached(ttl=600) # Cache results for 10 minutes
+def get_knowledge_context(query: str) -> dict:
+    """
+    Retrieves knowledge context from the knowledge_retriever service.
+    This function is decorated with a cache to improve performance.
+    """
+    try:
+        knowledge_payload = {'query': query}
+        response = requests.post(f"{KNOWLEDGE_RETRIEVER_URL}/query", json=knowledge_payload)
+        response.raise_for_status() # Raise an exception for bad status codes
+        knowledge_context = response.json()
+        print("Orchestrator: Retrieved rich context from Knowledge Retriever.")
+        return knowledge_context
+    except requests.exceptions.RequestException as e:
+        print(f"Orchestrator: Error connecting to Knowledge Retriever: {e}")
+        return None
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
