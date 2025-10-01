@@ -1,30 +1,30 @@
-# NEXUS: Enterprise-Grade AI Orchestrator
+# NEXUS: A Self-Improving AI Architecture
 
-This repository contains the implementation for NEXUS, a modular, enterprise-grade AI orchestrator. NEXUS is designed with a professional, high-tech microservices architecture to provide intelligent, secure, and scalable AI-driven workflows.
+This repository contains the implementation for NEXUS, a high-tech, self-improving AI architecture. NEXUS is designed to autonomously observe, analyze, and evolve its own software components to achieve high-level strategic goals, built on a foundation of mathematical guarantees for stability and rational decision-making.
 
-## Overview
+## Core Principles: Autonomous Evolution
 
-NEXUS intelligently processes user queries by orchestrating a professional suite of microservices. It leverages a true Graph-RAG pipeline for deep, context-aware knowledge retrieval and a hardened, containerized sandbox for secure code execution, making it a cutting-edge platform for advanced AI applications.
+NEXUS operates on a dynamic observe-orient-decide-act (OODA) loop, enabling it to evolve without human intervention. This is achieved through a professional, multi-ecosystem architecture:
 
-The core enterprise-grade components are:
-- **Orchestrator**: The central service that manages complex workflows.
-- **Knowledge Retriever**: A true Graph-RAG service using Neo4j and FAISS for hybrid knowledge retrieval.
-- **Execution Sandbox**: A hardened service that executes code in isolated, resource-limited Docker containers.
-- **LLM Adapter**: Connects to OpenAI's GPT models to generate intelligent, context-aware responses.
-- **Memory Layer**: A robust service using Redis for high-performance session memory.
+-   **The Central Nervous System (Observability)**: An integrated Prometheus and Grafana stack allows the system to observe its own performance metrics in real-time, providing a quantitative "feeling" of its state.
+-   **The Mind (Meta-Controller)**: A high-level agent that receives strategic goals from operators. It analyzes the system's performance data from the nervous system to make rational, goal-oriented decisions about how the system should evolve.
+-   **The Hands (Code Modifier)**: A secure, privileged service that acts on the decisions of the Mind. It has the ability to safely modify the source code of other components, completing the self-evolutionary loop.
 
-## High-Tech Architecture
+This architecture transforms NEXUS from a static application into a dynamic, goal-driven system capable of autonomous improvement.
 
-The system is designed as a set of communicating microservices containerized with Docker. This architecture includes:
-- **Neo4j**: A graph database that stores interconnected knowledge.
-- **Redis**: An in-memory data store for high-speed session management.
-- **Docker-in-Docker**: The execution sandbox uses this pattern to provide breakthrough security, running all code in isolated containers.
+## High-Tech Components
 
-For a detailed explanation of the original architectural principles, see the [ARCHITECTURE.md](docs/ARCHITECTURE.md) file.
+The system is composed of a suite of professional microservices:
+- **Meta-Controller**: The "Mind." Analyzes performance and decides on code changes.
+- **Code Modifier**: The "Hands." Safely applies proposed code changes.
+- **Orchestrator**: The core workflow engine, now fully observable by the meta-controller.
+- **Knowledge Retriever**: A true Graph-RAG service using Neo4j and FAISS.
+- **Execution Sandbox**: A hardened, containerized sandbox for secure code execution.
+- **Observability Stack**: Prometheus and Grafana provide the system's "senses."
 
 ## Getting Started
 
-Follow these instructions to build and run the enterprise-grade NEXUS system.
+Follow these instructions to run the full self-improving NEXUS ecosystem.
 
 ### Prerequisites
 
@@ -33,57 +33,56 @@ Follow these instructions to build and run the enterprise-grade NEXUS system.
 
 ### Running the Application
 
-1.  **Clone the repository** (if you haven't already):
-    ```sh
-    git clone <repository-url>
-    cd <repository-directory>
-    ```
-
-2.  **Set your OpenAI API Key**:
-    Create a `.env` file in the root of the project and add your API key to it:
+1.  **Set your OpenAI API Key**: Create a `.env` file in the root of the project:
     ```
     OPENAI_API_KEY=your_openai_api_key_here
     ```
 
-3.  **Build and run the services**:
-    This command will build all service images and start the full NEXUS stack, including Neo4j and Redis.
+2.  **Build and run the full ecosystem**:
     ```sh
     docker-compose -f infra/docker-compose.yml up --build
     ```
-    *Note: The first time you run this, Docker will download the Neo4j and Redis images, which may take a few moments.*
+    This will start all NEXUS services, including the new meta-controller and observability stack.
 
-### Testing the System
+### Testing the Self-Improving Loop
 
-Once all services are running, you must first populate the knowledge base.
-
-1.  **Populate the Knowledge Retriever**:
-    Send a POST request to the `/populate` endpoint to load the sample data into Neo4j and FAISS.
+1.  **Populate the Knowledge Base**:
+    (In a new terminal) First, load the sample data into the knowledge retriever.
     ```sh
     curl -X POST http://localhost:5003/populate
     ```
 
-2.  **Query the Orchestrator**:
-    Now, you can send a query to the main endpoint. Use a query that leverages the populated knowledge to see the Graph-RAG pipeline in action.
+2.  **Run a Sample Query**:
+    Generate some performance data by sending a normal query to the orchestrator.
     ```sh
-    curl -X POST http://localhost:5001/api/v1/query \
+    curl -X POST http://localhost:5001/api/v1/query -H "Content-Type: application/json" -d '{"user_id": "test-user", "session_id": "session-1", "query": "hello"}'
+    ```
+
+3.  **Give the System a Strategic Goal**:
+    Now, instruct the "Mind" to improve the system. Set a strategic objective for the p95 latency to be under 0.1 seconds.
+    ```sh
+    curl -X POST http://localhost:6000/api/v1/objective \
     -H "Content-Type: application/json" \
     -d '{
-        "user_id": "enterprise-user",
-        "session_id": "session-456",
-        "query": "What is the relationship between the orchestrator and the memory layer?"
+        "goal": "reduce_p95_latency",
+        "target": 0.1
     }'
     ```
-    You should receive a professional, context-aware response from the LLM, informed by the hybrid search results from the knowledge retriever.
+
+4.  **Observe the System's Response**:
+    Check the Docker logs for the `meta_controller` and `code_modifier` services (`docker-compose -f infra/docker-compose.yml logs -f meta_controller code_modifier`). You will see the meta-controller analyze the Prometheus data, decide that the latency target is missed, and send a modification proposal to the code modifier. The code modifier will then apply a simulated change to the orchestrator's source code.
 
 ## Services
 
 | Service                 | Port  | Description                                                         |
 | ----------------------- | ----- | ------------------------------------------------------------------- |
-| **Orchestrator**        | 5001  | The main entry point and advanced workflow coordinator.             |
+| **Meta-Controller**     | 6000  | The "Mind" of the system. Receives goals and makes decisions.       |
+| **Code Modifier**       | 6001  | The "Hands" of the system. Safely applies code changes.             |
+| **Orchestrator**        | 5001  | The core workflow engine, instrumented for observability.           |
 | **Knowledge Retriever** | 5003  | Enterprise Graph-RAG service with Neo4j and FAISS.                  |
-| **Memory Layer**        | 5004  | High-performance session memory using Redis.                        |
 | **Execution Sandbox**   | 5005  | Hardened, secure code execution using Docker-in-Docker.             |
 | **LLM Adapter**         | 5006  | Connects to OpenAI to generate intelligent responses.               |
+| **Prometheus**          | 9090  | The "Nervous System." Collects performance metrics.                 |
+| **Grafana**             | 3000  | Visualizes system performance. (Default login: admin/admin)         |
 | **Neo4j**               | 7474  | Graph database for the knowledge retriever. (UI on port 7474)       |
 | **Redis**               | 6379  | In-memory data store for the Memory Layer.                          |
-| Agent Manager           | 5002  | Mock service, kept for structural consistency.                      |

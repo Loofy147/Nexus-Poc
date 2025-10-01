@@ -1,5 +1,21 @@
 version: '3.8'
 services:
+  prometheus:
+    image: prom/prometheus:v2.37.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  grafana:
+    image: grafana/grafana:9.1.0
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
   neo4j:
     image: neo4j:4.4
     ports:
@@ -30,6 +46,7 @@ services:
       - memory_layer
       - execution_sandbox
       - llm_adapter_mock
+      - prometheus
 
   agent_manager: # This service is now largely vestigial but kept for structural consistency
     build: ../src/agent_manager
@@ -69,6 +86,24 @@ services:
       - "5006:5006"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+  meta_controller:
+    build: ../src/meta_controller
+    ports:
+      - "6000:6000"
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+      - CODE_MODIFIER_URL=http://code_modifier:6001
+    depends_on:
+      - prometheus
+      - code_modifier
+
+  code_modifier:
+    build: ../src/code_modifier
+    ports:
+      - "6001:6001"
+    volumes:
+      - ../src:/app/src_code # Mount the host's src directory to give it modification access
 
 volumes:
   neo4j_data:
