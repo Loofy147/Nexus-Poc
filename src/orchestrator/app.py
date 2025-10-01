@@ -1,5 +1,6 @@
 import os
 import requests
+import re
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -10,6 +11,13 @@ KNOWLEDGE_GRAPH_URL = os.environ.get("KNOWLEDGE_GRAPH_URL", "http://localhost:50
 MEMORY_LAYER_URL = os.environ.get("MEMORY_LAYER_URL", "http://localhost:5004")
 EXECUTION_SANDBOX_URL = os.environ.get("EXECUTION_SANDBOX_URL", "http://localhost:5005")
 LLM_ADAPTER_URL = os.environ.get("LLM_ADAPTER_URL", "http://localhost:5006")
+
+def extract_code(text):
+    """Extracts python code from a markdown code block."""
+    match = re.search(r"```python\n(.*?)```", text, re.DOTALL)
+    if match:
+        return match.group(1)
+    return None
 
 @app.route('/api/v1/query', methods=['POST'])
 def query_handler():
@@ -23,7 +31,7 @@ def query_handler():
 
     print(f"Orchestrator: Received query: '{query}' for user '{user_id}'")
 
-    # 1. Retrieve memory (simulated for PoC)
+    # 1. Retrieve memory
     try:
         memory_payload = {'user_id': user_id, 'session_id': session_id}
         memory_response = requests.post(f"{MEMORY_LAYER_URL}/memory/retrieve", json=memory_payload)
@@ -33,7 +41,7 @@ def query_handler():
         print(f"Orchestrator: Could not connect to Memory Layer: {e}")
         return jsonify({"error": "Failed to connect to Memory Layer"}), 503
 
-    # 2. Select agent
+    # 2. Select agent (This could be deprecated or changed in a real system)
     try:
         agent_payload = {'query': query}
         agent_response = requests.post(f"{AGENT_MANAGER_URL}/agent/select", json=agent_payload)
@@ -55,21 +63,24 @@ def query_handler():
 
     # 4. Interact with LLM
     try:
-        llm_prompt = f"Context: {knowledge_context}\n\nHistory: {session_history}\n\nQuery: {query}\n\nRespond now."
+        llm_prompt = f"Context: {knowledge_context}\n\nHistory: {session_history}\n\nQuery: {query}\n\nBased on the query, if a user asks to run code, provide a Python script in a markdown block. Otherwise, provide a helpful answer."
         llm_payload = {'prompt': llm_prompt}
         llm_response = requests.post(f"{LLM_ADAPTER_URL}/llm/generate", json=llm_payload)
         llm_result = llm_response.json()
+        llm_answer = llm_result.get('answer')
         print("Orchestrator: Received response from LLM Adapter.")
     except requests.exceptions.RequestException as e:
         print(f"Orchestrator: Could not connect to LLM Adapter: {e}")
         return jsonify({"error": "Failed to connect to LLM Adapter"}), 503
 
-    # 5. Execute code if needed
+    # 5. Execute code if a script is present in the LLM's response
     execution_result = None
-    if llm_result.get('action_plan') and llm_result['action_plan']['agent'] == 'execution_agent':
+    code_to_execute = extract_code(llm_answer)
+
+    if code_to_execute:
         try:
-            print("Orchestrator: Dispatching code to Execution Sandbox.")
-            execution_payload = llm_result['action_plan']['payload']
+            print("Orchestrator: Code found in LLM response. Dispatching to Execution Sandbox.")
+            execution_payload = {"language": "python", "code": code_to_execute}
             exec_response = requests.post(f"{EXECUTION_SANDBOX_URL}/execute", json=execution_payload)
             execution_result = exec_response.json()
             print("Orchestrator: Received result from Execution Sandbox.")
@@ -87,13 +98,12 @@ def query_handler():
         requests.post(f"{MEMORY_LAYER_URL}/memory/store", json=event_payload)
         print("Orchestrator: Stored event in memory.")
     except requests.exceptions.RequestException as e:
-        # Non-critical error, log and continue
         print(f"Orchestrator: Could not store event in Memory Layer: {e}")
 
     # 7. Consolidate and return response
     final_response = {
         "query": query,
-        "llm_answer": llm_result.get('answer'),
+        "llm_answer": llm_answer,
         "execution_result": execution_result,
         "knowledge_source": "Graph-RAG Mock"
     }
