@@ -1,5 +1,10 @@
 version: '3.8'
 services:
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+
   orchestrator:
     build: ../src/orchestrator
     ports:
@@ -8,13 +13,13 @@ services:
       - FLASK_APP=app.py
       - AGENT_MANAGER_URL=http://agent_manager:5002
       - KNOWLEDGE_GRAPH_URL=http://knowledge_graph_mock:5003
-      - MEMORY_LAYER_URL=http://memory_layer_mock:5004
+      - MEMORY_LAYER_URL=http://memory_layer:5004
       - EXECUTION_SANDBOX_URL=http://execution_sandbox:5005
       - LLM_ADAPTER_URL=http://llm_adapter_mock:5006
     depends_on:
       - agent_manager
       - knowledge_graph_mock
-      - memory_layer_mock
+      - memory_layer
       - execution_sandbox
       - llm_adapter_mock
 
@@ -28,12 +33,14 @@ services:
     ports:
       - "5003:5003"
 
-  memory_layer_mock:
-    build: ../src/memory_layer_mock
+  memory_layer:
+    build: ../src/memory_layer
     ports:
       - "5004:5004"
-    volumes:
-      - nexus_memory:/tmp/nexus_memory
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
 
   execution_sandbox:
     build: ../src/execution_sandbox
@@ -44,6 +51,5 @@ services:
     build: ../src/llm_adapter_mock
     ports:
       - "5006:5006"
-
-volumes:
-  nexus_memory:
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY} # Pass the API key from the host
