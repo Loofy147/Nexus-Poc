@@ -6,13 +6,44 @@ import pandas as pd
 import requests
 from advanced_metrics import AdvancedMetricsCollector
 
+# OpenTelemetry Imports for Tracing
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
 # Import the new enterprise-grade modules
 from causal_engine import EnterpriseCausalEngine
 from flask import Flask, jsonify, request
 from prometheus_flask_exporter import Counter, PrometheusMetrics
 from risk_assessor import EnterpriseRiskAssessor
 
+# Configure OpenTelemetry Tracing
+def configure_tracer(service_name: str):
+    """Sets up the OpenTelemetry tracer"""
+    resource = Resource(attributes={"service.name": service_name})
+    provider = TracerProvider(resource=resource)
+
+    # Use the OTLP exporter, endpoint is configured by env var
+    otlp_exporter = OTLPSpanExporter()
+    processor = BatchSpanProcessor(otlp_exporter)
+    provider.add_span_processor(processor)
+
+    # Sets the global default tracer provider
+    trace.set_tracer_provider(provider)
+
+# Call configuration before initializing the app
+SERVICE_NAME = os.environ.get("SERVICE_NAME", "meta-controller")
+configure_tracer(SERVICE_NAME)
+
+
 app = Flask(__name__)
+
+# Instrument Flask app with OpenTelemetry
+FlaskInstrumentor().instrument_app(app)
+
 metrics = PrometheusMetrics(app)
 
 # Define a custom business metric to track meta-controller decisions
