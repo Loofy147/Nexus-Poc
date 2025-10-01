@@ -17,9 +17,9 @@ class GitManager:
         self.repo_path = repo_path
         try:
             self.repo = git.Repo(self.repo_path)
-            print("Git Manager: Git repository initialized successfully.")
+            print(f"Git Manager: Git repository initialized successfully at '{self.repo_path}'.")
         except git.InvalidGitRepositoryError:
-            print("Git Manager: ERROR - Invalid Git repository.")
+            print(f"Git Manager: ERROR - Invalid Git repository at '{self.repo_path}'.")
             self.repo = None
 
     def create_and_checkout_branch(self, branch_name: str) -> bool:
@@ -56,7 +56,8 @@ class EnterpriseCodeModifier:
     def __init__(self, config: Dict = None):
         self.config = config or {}
         self.src_path = "/app/src_code"
-        self.git_manager = GitManager(repo_path="/app") # Git repo is at the root
+        repo_path = os.environ.get("GIT_REPO_PATH", "/app")
+        self.git_manager = GitManager(repo_path=repo_path)
         print("Enterprise Code Modifier: Initialized.")
 
     def apply_modification(self, modification_request: Dict) -> Dict:
