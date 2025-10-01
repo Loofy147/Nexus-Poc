@@ -55,7 +55,7 @@ class EnterpriseCodeModifier:
     """
     def __init__(self, config: Dict = None):
         self.config = config or {}
-        self.src_path = "/app/src_code"
+        self.src_path = "/app/src" # Corrected path to the mounted source code
         repo_path = os.environ.get("GIT_REPO_PATH", "/app")
         self.git_manager = GitManager(repo_path=repo_path)
         print("Enterprise Code Modifier: Initialized.")

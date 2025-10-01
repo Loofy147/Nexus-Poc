@@ -1,0 +1,18 @@
+server:
+  http_listen_port: 4040
+
+storage:
+  path: /var/lib/pyroscope/data
+
+scrape_configs:
+- job_name: 'nexus'
+  scrape_interval: 15s
+  static_configs:
+  - targets:
+    - orchestrator:5001
+    - meta-controller:6000
+    - code-modifier:6001
+    - knowledge-retriever:5003
+    - llm-adapter:5006
+    labels:
+      application: 'nexus'
