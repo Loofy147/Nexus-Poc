@@ -1,0 +1,50 @@
+_format_version: "3.0"
+
+services:
+  - name: nexus-meta-controller
+    url: http://meta-controller:6000
+    protocol: http
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: meta-controller-api-route
+        paths:
+          - /meta-controller
+        strip_path: true
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+      - name: key-auth
+        config:
+          key_names:
+            - apikey
+      - name: prometheus
+        config:
+          per_consumer: true
+
+  - name: nexus-orchestrator
+    url: http://orchestrator:5001
+    protocol: http
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: orchestrator-api-route
+        paths:
+          - /orchestrator
+        strip_path: true
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+      - name: key-auth
+        config:
+          key_names:
+            - apikey
+      - name: prometheus
+        config:
+          per_consumer: true

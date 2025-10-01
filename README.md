@@ -6,26 +6,21 @@ This repository contains the implementation for NEXUS, a high-tech, self-improvi
 
 NEXUS is built on a professional, layered architecture to separate concerns and ensure enterprise-grade stability and intelligence.
 
-### Layer 1: The Intelligence Layer (The Mind)
-The `meta_controller` service orchestrates an **Observe-Orient-Decide-Act (OODA)** loop. It uses a suite of advanced engines to make rational, data-driven decisions:
--   **Advanced Metrics Collector**: Performs real-time anomaly detection on key performance indicators.
--   **Enterprise Causal Engine**: Discovers the root causes of system behavior to predict the impact of changes.
--   **Enterprise Risk Assessor**: Assesses system stability and the risks associated with proposed changes.
+### Layer 0: The API Gateway (The Front Door)
+All traffic into the NEXUS ecosystem is managed by an enterprise-grade API Gateway powered by Kong. This provides a single, secure, and manageable entry point for all services. Key features include:
+-   **Centralized Routing**: Maps public API endpoints (e.g., `/orchestrator`) to the appropriate internal microservices.
+-   **Security**: Enforces authentication (e.g., API keys) on all incoming requests.
+-   **Resilience**: Provides rate-limiting and circuit-breaking to protect services from overload.
+-   **Observability**: Automatically generates metrics for all API traffic, which are scraped by Prometheus.
 
-The Intelligence Layer operates on a continuous **Observe-Orient-Decide-Act (OODA)** loop:
-1.  **Observe**: The `AdvancedMetricsCollector` gathers a comprehensive set of real-time performance data from Prometheus.
-2.  **Orient**: The controller first checks for anomalies in the collected metrics. If critical anomalies are found, the cycle is aborted to ensure stability. If the system is stable, it then uses the `EnterpriseRiskAssessor` to quantify risks.
-3.  **Decide**: If the system is stable and risk is acceptable, it uses the `EnterpriseCausalEngine` to perform a rigorous causal analysis and determine the optimal action.
-4.  **Act**: It formulates a formal change proposal and dispatches it to the Execution Layer.
+### Layer 1: The Intelligence Layer (The Mind)
+The `meta_controller` service orchestrates an **Observe-Orient-Decide-Act (OODA)** loop, using its advanced engines to make rational, data-driven decisions.
 
 ### Layer 2: The Execution Layer (The Hands)
 The `code_modifier` service uses its `EnterpriseCodeModifier` engine to provide guarantees for every autonomous code change by enforcing a professional pipeline of security scanning, quality checks, and version control.
 
 ### Layer 4: The Observability Layer (The Senses)
-This layer provides deep, real-time insight into the system's behavior and performance. It is the foundation of the system's self-awareness.
--   **Prometheus & Grafana**: Provide time-series metrics and visualization for monitoring system health and performance. The `meta_controller` uses this data to inform its decisions.
--   **Jaeger (Distributed Tracing)**: Captures the full lifecycle of requests as they travel through the NEXUS microservices. This allows operators to visualize call graphs, identify bottlenecks, and debug complex interactions.
--   **Pyroscope (Continuous Profiling)**: Continuously profiles the CPU and memory usage of services, allowing for the identification of performance regressions and optimization opportunities at the code level.
+This layer provides deep, real-time insight into the system's behavior and performance, with components like Prometheus, Jaeger, and Pyroscope.
 
 ## Getting Started
 
@@ -39,12 +34,25 @@ Follow these instructions to run the full self-improving NEXUS ecosystem.
 1.  **Set API Key**: Create a `.env` file: `OPENAI_API_KEY=your_key_here`
 2.  **Build and run**: `docker-compose -f infra/docker-compose.yml up --build`
 
-### Testing the Full OODA Loop and Observability Stack
+### Testing the Full OODA Loop through the API Gateway
 
-1.  **Populate Knowledge Base with Documents**:
-    Use the new `/populate` endpoint to ingest text documents into the knowledge retriever. This will trigger the `EnterpriseGraphRAG` engine to chunk the text, extract entities, and build the knowledge graph in Neo4j.
+1.  **Generate an API Key**:
+    For this PoC, we will manually create a "consumer" and an API key for them by calling the Kong Admin API.
     ```sh
-    curl -X POST http://localhost:5003/populate \
+    # Step 1: Create a consumer
+    curl -i -X POST http://localhost:8001/consumers/ \
+      --data username=nexus-developer
+
+    # Step 2: Provision an API key for the consumer
+    curl -i -X POST http://localhost:8001/consumers/nexus-developer/key-auth \
+      --data key=my-secret-apikey
+    ```
+
+2.  **Populate Knowledge Base via the Gateway**:
+    All requests now go through the Kong proxy port (8000) and require the API key.
+    ```sh
+    curl -X POST http://localhost:8000/orchestrator/populate \
+    -H "apikey: my-secret-apikey" \
     -H "Content-Type: application/json" \
     -d '{
         "documents": [
@@ -54,15 +62,17 @@ Follow these instructions to run the full self-improving NEXUS ecosystem.
     }'
     ```
 
-2.  **Generate Performance Data & Ask a Complex Question**:
-    Run a query that requires reasoning across the newly ingested knowledge. This will also generate traces and profiles.
+3.  **Give the System a Strategic Goal via the Gateway**:
     ```sh
-    curl -X POST http://localhost:5001/api/v1/query -H "Content-Type: application/json" -d '{"user_id": "test", "session_id": "1", "query": "How is the orchestrator related to the knowledge retriever?"}'
-    ```
-
-3.  **Give the System a Strategic Goal**:
-    ```sh
-    curl -X POST http://localhost:6000/api/v1/objective -H "Content-Type: application/json" -d '{"goal": "reduce_latency", "target_metric": "latency", "intervention": "enable_caching", "affected_metrics": ["latency", "error_rate"]}'
+    curl -X POST http://localhost:8000/meta-controller/api/v1/objective \
+    -H "apikey: my-secret-apikey" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "goal": "reduce_latency",
+        "target_metric": "latency",
+        "intervention": "enable_caching",
+        "affected_metrics": ["latency", "error_rate"]
+    }'
     ```
 
 4.  **Observe the System's Response**:
@@ -91,18 +101,19 @@ To ensure the system is scalable and responsive, NEXUS employs an enterprise-gra
 
 | Service                 | Port   | Description                                                         |
 | ----------------------- | ------ | ------------------------------------------------------------------- |
-| **Meta-Controller**     | 6000   | **The Intelligence Layer.** Orchestrates the OODA loop.             |
-| **Code Modifier**       | 6001   | **The Execution Layer.** Applies safe, validated, versioned changes.|
-| **Orchestrator**        | 5001   | The core workflow engine, instrumented for observability.           |
-| **Knowledge Retriever** | 5003   | **Knowledge Layer.** High-tech Graph-RAG with dynamic ingestion.    |
-| **Execution Sandbox**   | 5005   | Hardened, secure code execution using Docker-in-Docker.             |
-| **LLM Adapter**         | 5006   | Connects to OpenAI to generate intelligent responses.               |
+| **Kong API Gateway**    | 8000   | **The API Gateway Layer.** The single entry point for all services. |
+| **Meta-Controller**     | (internal) | **The Intelligence Layer.** Orchestrates the OODA loop.             |
+| **Code Modifier**       | (internal) | **The Execution Layer.** Applies safe, validated, versioned changes.|
+| **Orchestrator**        | (internal) | The core workflow engine, instrumented for observability.           |
+| **Knowledge Retriever** | (internal) | **Knowledge Layer.** High-tech Graph-RAG with dynamic ingestion.    |
+| **Execution Sandbox**   | (internal) | Hardened, secure code execution using Docker-in-Docker.             |
+| **LLM Adapter**         | (internal) | Connects to OpenAI to generate intelligent responses.               |
 | **Prometheus**          | 9090   | **The Observability Layer.** Collects performance metrics.          |
 | **Grafana**             | 3000   | Visualizes system performance.                                      |
 | **Jaeger**              | 16686  | **The Observability Layer.** Provides distributed tracing.          |
 | **Pyroscope**           | 4040   | **The Observability Layer.** Provides continuous profiling.         |
-| **Neo4j**               | 7474   | Graph database for the knowledge retriever.                         |
-| **Redis**               | 6379   | In-memory data store for the Memory Layer.                          |
+| **Neo4j**               | (internal) | Graph database for the knowledge retriever.                         |
+| **Redis**               | (internal) | In-memory data store for the Memory Layer.                          |
 
 ---
 
