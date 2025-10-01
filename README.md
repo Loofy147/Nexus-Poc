@@ -7,7 +7,16 @@ This repository contains the implementation for NEXUS, a high-tech, self-improvi
 NEXUS is built on a professional, layered architecture to separate concerns and ensure enterprise-grade stability and intelligence.
 
 ### Layer 1: The Intelligence Layer (The Mind)
-The `meta_controller` service orchestrates an **Observe-Orient-Decide-Act (OODA)** loop, using its `EnterpriseCausalEngine` and `EnterpriseRiskAssessor` to make rational, data-driven decisions.
+The `meta_controller` service orchestrates an **Observe-Orient-Decide-Act (OODA)** loop. It uses a suite of advanced engines to make rational, data-driven decisions:
+-   **Advanced Metrics Collector**: Performs real-time anomaly detection on key performance indicators.
+-   **Enterprise Causal Engine**: Discovers the root causes of system behavior to predict the impact of changes.
+-   **Enterprise Risk Assessor**: Assesses system stability and the risks associated with proposed changes.
+
+The Intelligence Layer operates on a continuous **Observe-Orient-Decide-Act (OODA)** loop:
+1.  **Observe**: The `AdvancedMetricsCollector` gathers a comprehensive set of real-time performance data from Prometheus.
+2.  **Orient**: The controller first checks for anomalies in the collected metrics. If critical anomalies are found, the cycle is aborted to ensure stability. If the system is stable, it then uses the `EnterpriseRiskAssessor` to quantify risks.
+3.  **Decide**: If the system is stable and risk is acceptable, it uses the `EnterpriseCausalEngine` to perform a rigorous causal analysis and determine the optimal action.
+4.  **Act**: It formulates a formal change proposal and dispatches it to the Execution Layer.
 
 ### Layer 2: The Execution Layer (The Hands)
 The `code_modifier` service uses its `EnterpriseCodeModifier` engine to provide guarantees for every autonomous code change by enforcing a professional pipeline of security scanning, quality checks, and version control.
@@ -56,8 +65,8 @@ Follow these instructions to run the full self-improving NEXUS ecosystem.
     curl -X POST http://localhost:6000/api/v1/objective -H "Content-Type: application/json" -d '{"goal": "reduce_latency", "target_metric": "latency", "intervention": "enable_caching", "affected_metrics": ["latency", "error_rate"]}'
     ```
 
-3.  **Observe the System's Response**:
-    -   **Logs**: Watch the `meta_controller` and `code_modifier` logs.
+4.  **Observe the System's Response**:
+    -   **Logs**: Watch the `meta_controller` and `code_modifier` logs. You will see the `meta_controller` first perform anomaly detection before proceeding with risk assessment and causal analysis.
     -   **Git**: Check the git log for the new autonomous commit: `git log --oneline --graph --all`.
     -   **Jaeger UI**: Open `http://localhost:16686` to view the distributed traces for the query request. Select the "orchestrator" service and find the most recent trace.
     -   **Pyroscope UI**: Open `http://localhost:4040` to view the continuous performance profiles of the `orchestrator` service.
