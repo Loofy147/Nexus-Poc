@@ -128,3 +128,27 @@ While `docker-compose` is excellent for local development, a professional, enter
 ### Note on Full Deployment
 
 The provided `nexus-production.yaml` file is a professional, production-ready template for the `meta-controller` service. For a full production deployment of the entire NEXUS system, you would need to create similar high-quality, robust manifest files for all other services (`orchestrator`, `code_modifier`, `knowledge_retriever`, etc.), following the best practices established in this template.
+
+---
+
+## Enterprise-Grade CI/CD with Argo
+
+This project is designed to be managed using a professional, enterprise-grade GitOps and Progressive Delivery pipeline powered by the Argo ecosystem.
+
+### Core Components
+
+-   **ArgoCD**: The `infra/argocd/nexus-application.yaml` file defines the NEXUS system as an `Application` resource. This tells ArgoCD to continuously monitor the `infra/kubernetes` directory in this Git repository and ensure that the live state of the Kubernetes cluster matches the state defined in these manifests. This provides a single source of truth and automated, auditable deployments.
+-   **Argo Rollouts**: The `infra/kubernetes/rollouts/meta-controller-rollout.yaml` file defines a `Rollout` resource, which replaces the standard `Deployment`. This custom resource orchestrates a sophisticated canary release strategy.
+-   **Analysis Templates**: The `infra/kubernetes/rollouts/analysis-templates.yaml` file defines automated health checks. The `Rollout` uses these templates to query Prometheus and verify that key SLOs (like success rate and latency) are met before promoting a new version, automatically rolling back if they are not.
+
+### Deployment Steps
+
+1.  **Install ArgoCD and Argo Rollouts**: Follow their official documentation to install these tools into your Kubernetes cluster.
+2.  **Apply the ArgoCD Application**:
+    ```sh
+    # This only needs to be done once.
+    kubectl apply -f infra/argocd/nexus-application.yaml
+    ```
+    ArgoCD will now automatically detect and deploy all the manifests in the `infra/kubernetes` directory, including the new `Rollout` resources.
+3.  **Triggering a New Release**:
+    To deploy a new version of the `meta-controller`, simply update the `image:` tag in the `infra/kubernetes/rollouts/meta-controller-rollout.yaml` file and commit the change to the `main` branch. ArgoCD will detect the change and automatically begin the canary release process defined in the `Rollout` resource. You can observe the entire process in the ArgoCD UI.
