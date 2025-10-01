@@ -83,6 +83,10 @@ To fully realize the enterprise-grade vision outlined in the initial plan, the f
 -   **Automated Testing and Gradual Deployment**: Implement the `AutomatedTestRunner` and `GradualDeploymentEngine` to create a full, enterprise-grade CI/CD pipeline for autonomous changes, including canary deployments and automated rollbacks.
 -   **Comprehensive SLO and Governance Layer**: Build out the Strategic Control Layer (Layer 0) with a formal Policy Engine and SLO monitoring to provide robust governance and oversight for the system's autonomous actions.
 
+### Layer-N: Performance Optimization
+To ensure the system is scalable and responsive, NEXUS employs an enterprise-grade performance optimization strategy.
+-   **Intelligent Caching**: The `orchestrator` service includes a professional, reusable caching system (`caching.py`) that uses Redis as a backend. The `@cached` decorator provides a simple and powerful way to apply a cache-aside pattern to any function, drastically reducing latency for repeated operations. The high-latency calls to the `knowledge_retriever` are now cached, significantly improving query performance.
+
 ## Services
 
 | Service                 | Port   | Description                                                         |

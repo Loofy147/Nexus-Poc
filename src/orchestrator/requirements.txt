@@ -4,3 +4,4 @@ prometheus-flask-exporter==0.20.3
 opentelemetry-distro==0.38b0
 opentelemetry-exporter-otlp==1.17.0
 pyroscope-io==0.8.1
+redis==4.3.4
