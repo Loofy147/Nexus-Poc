@@ -10,7 +10,7 @@ import bandit.core.manager
 import black
 import git
 import isort
-from pylint import epylint as lint
+from pylint.lint import Run
 
 
 class GitManager:
@@ -137,9 +137,11 @@ class EnterpriseCodeModifier:
     def _generate_code_change(self, target_file: str, request: Dict) -> Dict:
         """
         Generates a deterministic, safe code change based on the request.
-        For this PoC, it adds a placeholder decorator to the main query handler.
+        This version dispatches to different handlers based on the intervention type.
         """
         print("Enterprise Code Modifier: Generating code change.")
+        intervention_type = request.get("type")
+
         try:
             with open(target_file, "r") as f:
                 original_code = f.read()
@@ -149,33 +151,21 @@ class EnterpriseCodeModifier:
             )
             return None
 
-        # Use AST to safely find the function to modify
-        tree = ast.parse(original_code)
-        modified = False
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef) and node.name == "query_handler":
-                # Add a placeholder decorator
-                node.decorator_list.insert(
-                    0, ast.Name(id="placeholder_cache_decorator", ctx=ast.Load())
-                )
-                modified = True
-                break
-
-        if not modified:
+        if intervention_type == "add_timeout":
+            modified_code = self._handle_add_timeout(original_code)
+        elif intervention_type == "enable_caching":
+            modified_code = self._handle_enable_caching(original_code)
+        else:
             print(
-                "Enterprise Code Modifier: Could not find target function 'query_handler' to modify."
+                f"Enterprise Code Modifier: Unknown intervention type '{intervention_type}'."
             )
             return None
 
-        # Add the placeholder decorator function definition at the top of the file
-        decorator_code = "def placeholder_cache_decorator(f):\n    def wrapper(*args, **kwargs):\n        # TODO: Implement real caching logic\n        return f(*args, **kwargs)\n    return wrapper\n\n"
-
-        modified_code_unformatted = decorator_code + ast.unparse(tree)
+        if not modified_code:
+            return None
 
         # Format with black and isort
-        formatted_code = black.format_str(
-            modified_code_unformatted, mode=black.FileMode()
-        )
+        formatted_code = black.format_str(modified_code, mode=black.FileMode())
         formatted_code = isort.code(formatted_code)
 
         print("Enterprise Code Modifier: Code change generated and formatted.")
@@ -184,6 +174,69 @@ class EnterpriseCodeModifier:
             "modified": formatted_code,
             "file": target_file,
         }
+
+    def _handle_add_timeout(self, code: str) -> str:
+        """
+        Adds or updates a 'timeout' parameter in a specific requests.post call.
+        Targets the 'get_knowledge_context' function in the orchestrator.
+        """
+        tree = ast.parse(code)
+        modified = False
+        for func_node in ast.walk(tree):
+            if isinstance(func_node, ast.FunctionDef) and func_node.name == "get_knowledge_context":
+                for node in ast.walk(func_node):
+                    if (
+                        isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == "requests"
+                        and node.func.attr == "post"
+                    ):
+                        # Check if a timeout keyword already exists
+                        timeout_exists = False
+                        for keyword in node.keywords:
+                            if keyword.arg == "timeout":
+                                keyword.value = ast.Constant(value=15)  # Update existing
+                                timeout_exists = True
+                                break
+
+                        if not timeout_exists:
+                            node.keywords.append(
+                                ast.keyword(arg="timeout", value=ast.Constant(value=15)) # Add new
+                            )
+
+                        modified = True
+                        break  # Modify only the first match
+                if modified:
+                    break
+
+        if not modified:
+            print("Enterprise Code Modifier: Could not find requests.post call in get_knowledge_context.")
+            return None
+
+        return ast.unparse(tree)
+
+    def _handle_enable_caching(self, code: str) -> str:
+        """
+        Adds a caching decorator to the 'get_knowledge_context' function.
+        This is a more targeted version of the original PoC logic.
+        """
+        tree = ast.parse(code)
+        modified = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "get_knowledge_context":
+                # Add the @cached decorator
+                node.decorator_list.insert(
+                    0, ast.Name(id="cached", ctx=ast.Load())
+                )
+                modified = True
+                break
+
+        if not modified:
+            print("Enterprise Code Modifier: Could not find 'get_knowledge_context' function to add decorator.")
+            return None
+
+        return ast.unparse(tree)
 
     def _security_scan(self, code: str) -> bool:
         """
@@ -223,7 +276,7 @@ class EnterpriseCodeModifier:
 
     def _quality_check(self, code: str) -> bool:
         """
-        Performs a quality check using Pylint.
+        Performs a quality check using Pylint's modern Run class.
         Rejects code with a score below a configured threshold.
         """
         print("Enterprise Code Modifier: Running quality check with Pylint...")
@@ -236,31 +289,19 @@ class EnterpriseCodeModifier:
                 tmp_file.write(code)
                 filepath = tmp_file.name
 
-            (pylint_stdout, pylint_stderr) = lint.py_run(
-                f"{filepath} --output-format=text", return_std=True
-            )
+            # Use the modern Pylint API
+            results = Run([filepath], exit=False)
+            score = results.linter.stats.global_note
 
             os.remove(filepath)
 
-            # Extract the score from the output
-            output = pylint_stdout.getvalue()
-            score_line = [
-                line
-                for line in output.split("\n")
-                if "Your code has been rated at" in line
-            ]
-            if not score_line:
-                print("Enterprise Code Modifier: Could not parse Pylint score.")
-                return False
-
-            score = float(score_line[0].split(" at ")[1].split("/")[0])
             print(
-                f"Enterprise Code Modifier: Pylint score is {score}/{10.0}. Threshold is {quality_threshold}."
+                f"Enterprise Code Modifier: Pylint score is {score:.2f}/{10.0}. Threshold is {quality_threshold}."
             )
 
             if score < quality_threshold:
                 print(
-                    f"Enterprise Code Modifier: QUALITY FAILED. Score {score} is below threshold {quality_threshold}."
+                    f"Enterprise Code Modifier: QUALITY FAILED. Score {score:.2f} is below threshold {quality_threshold}."
                 )
                 return False
 

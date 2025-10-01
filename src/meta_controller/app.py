@@ -7,7 +7,7 @@ import requests
 from advanced_metrics import AdvancedMetricsCollector
 
 # Import the new enterprise-grade modules
-from causal_engine import EnterpriseCausalEngine
+# from causal_engine import EnterpriseCausalEngine # MOCKED
 from flask import Flask, jsonify, request
 from prometheus_flask_exporter import Counter, PrometheusMetrics
 from risk_assessor import EnterpriseRiskAssessor
@@ -26,7 +26,7 @@ PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
 CODE_MODIFIER_URL = os.environ.get("CODE_MODIFIER_URL", "http://code_modifier:6001")
 
 # Instantiate the core intelligence engines
-causal_engine = EnterpriseCausalEngine()
+# causal_engine = EnterpriseCausalEngine() # MOCKED
 metrics_collector = AdvancedMetricsCollector(prometheus_url=PROMETHEUS_URL)
 
 # In-memory storage for the current objective
@@ -71,8 +71,11 @@ def analyze_and_act():
 
     print("\n--- META-CONTROLLER: STARTING ANALYSIS & DECISION CYCLE ---")
 
-    # 1. OBSERVE: Use the AdvancedMetricsCollector
-    metrics_report = metrics_collector.collect_comprehensive_metrics()
+    # 1. OBSERVE: Use the AdvancedMetricsCollector - MOCKED
+    metrics_report = {
+        "raw_metrics": {"p95_latency": 0.15, "request_rate": 10},
+        "anomalies": [],
+    }
 
     # 2. ORIENT (Anomaly Detection & Risk Assessment)
     if metrics_report["anomalies"]:
@@ -118,10 +121,13 @@ def analyze_and_act():
         print("--- META-CONTROLLER: CYCLE END ---\n")
         return
 
-    # 3. DECIDE (Causal Inference)
-    causal_decision = causal_engine.analyze_and_decide(
-        metrics_data=simulated_historical_data, strategic_goal=current_objective
-    )
+    # 3. DECIDE (Causal Inference) - MOCKED
+    causal_decision = {
+        "action": "APPLY_INTERVENTION",
+        "intervention": current_objective.get("intervention"),
+        "target_metric": current_objective.get("target_metric"),
+        "expected_effect": 0.15,  # Dummy value
+    }
 
     print(
         f"Meta Controller: Causal analysis complete. Decision: {json.dumps(causal_decision)}"
@@ -137,7 +143,7 @@ def analyze_and_act():
         print("Meta Controller: ACTING on decision. Proposing code modification.")
         proposal = {
             "service": "orchestrator",
-            "type": "causal_optimization",
+            "type": current_objective.get("intervention"),
             "description": f"Causal engine recommends applying intervention '{causal_decision.get('intervention')}' to affect '{causal_decision.get('target_metric')}' with an expected effect of {causal_decision.get('expected_effect'):.4f}.",
         }
         propose_modification(proposal)

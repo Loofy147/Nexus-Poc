@@ -66,7 +66,7 @@ class EnterpriseRiskAssessor:
             stability_scores[metric] = {
                 "adf_pvalue": adf_pvalue,
                 "kpss_pvalue": kpss_pvalue,
-                "is_stationary": is_stationary,
+                "is_stationary": bool(is_stationary),
             }
 
         print(
