@@ -1,5 +1,15 @@
 version: '3.8'
 services:
+  neo4j:
+    image: neo4j:4.4
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    volumes:
+      - neo4j_data:/data
+
   redis:
     image: "redis:alpine"
     ports:
@@ -11,27 +21,31 @@ services:
       - "5001:5001"
     environment:
       - FLASK_APP=app.py
-      - AGENT_MANAGER_URL=http://agent_manager:5002
-      - KNOWLEDGE_GRAPH_URL=http://knowledge_graph_mock:5003
+      - KNOWLEDGE_RETRIEVER_URL=http://knowledge_retriever:5003
       - MEMORY_LAYER_URL=http://memory_layer:5004
       - EXECUTION_SANDBOX_URL=http://execution_sandbox:5005
       - LLM_ADAPTER_URL=http://llm_adapter_mock:5006
     depends_on:
-      - agent_manager
-      - knowledge_graph_mock
+      - knowledge_retriever
       - memory_layer
       - execution_sandbox
       - llm_adapter_mock
 
-  agent_manager:
+  agent_manager: # This service is now largely vestigial but kept for structural consistency
     build: ../src/agent_manager
     ports:
       - "5002:5002"
 
-  knowledge_graph_mock:
-    build: ../src/knowledge_graph_mock
+  knowledge_retriever:
+    build: ../src/knowledge_retriever
     ports:
       - "5003:5003"
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password
+    depends_on:
+      - neo4j
 
   memory_layer:
     build: ../src/memory_layer
@@ -46,10 +60,15 @@ services:
     build: ../src/execution_sandbox
     ports:
       - "5005:5005"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket for Docker-in-Docker
 
   llm_adapter_mock:
     build: ../src/llm_adapter_mock
     ports:
       - "5006:5006"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY} # Pass the API key from the host
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+volumes:
+  neo4j_data:

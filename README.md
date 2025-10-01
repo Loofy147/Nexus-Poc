@@ -1,33 +1,34 @@
-# NEXUS Proof of Concept (PoC)
+# NEXUS: Enterprise-Grade AI Orchestrator
 
-This repository contains the Proof of Concept (PoC) implementation for NEXUS, a modular, microservices-based adaptive knowledge-driven AI orchestrator. This PoC is built according to the specifications outlined in the [ARCHITECTURE.md](docs/ARCHITECTURE.md) document and has been enhanced with professional-grade components.
+This repository contains the implementation for NEXUS, a modular, enterprise-grade AI orchestrator. NEXUS is designed with a professional, high-tech microservices architecture to provide intelligent, secure, and scalable AI-driven workflows.
 
 ## Overview
 
-The NEXUS PoC demonstrates a service-oriented architecture for an AI system. It orchestrates interactions between specialized components to intelligently process user queries by combining knowledge retrieval, memory management, and safe code execution.
+NEXUS intelligently processes user queries by orchestrating a professional suite of microservices. It leverages a true Graph-RAG pipeline for deep, context-aware knowledge retrieval and a hardened, containerized sandbox for secure code execution, making it a cutting-edge platform for advanced AI applications.
 
-The core components are:
-- **Orchestrator**: The central service that coordinates the entire workflow.
-- **LLM Adapter**: Connects to a real LLM provider (OpenAI) to generate intelligent responses.
-- **Memory Layer**: A robust service using Redis for persistent session memory.
-- **Execution Sandbox**: A mock service for controlled code execution.
-- **Agent Manager**: A mock service for selecting processing agents.
-- **Knowledge Graph (Mock)**: A mock service simulating Graph-RAG hybrid search.
+The core enterprise-grade components are:
+- **Orchestrator**: The central service that manages complex workflows.
+- **Knowledge Retriever**: A true Graph-RAG service using Neo4j and FAISS for hybrid knowledge retrieval.
+- **Execution Sandbox**: A hardened service that executes code in isolated, resource-limited Docker containers.
+- **LLM Adapter**: Connects to OpenAI's GPT models to generate intelligent, context-aware responses.
+- **Memory Layer**: A robust service using Redis for high-performance session memory.
 
-## Architecture
+## High-Tech Architecture
 
-The system is designed as a set of communicating microservices, containerized with Docker. The `orchestrator` service acts as the brain, receiving user queries and coordinating calls to the other services to generate a response. The `memory_layer` now uses Redis for improved performance and scalability, and the `llm_adapter` connects to OpenAI's GPT models.
+The system is designed as a set of communicating microservices containerized with Docker. This architecture includes:
+- **Neo4j**: A graph database that stores interconnected knowledge.
+- **Redis**: An in-memory data store for high-speed session management.
+- **Docker-in-Docker**: The execution sandbox uses this pattern to provide breakthrough security, running all code in isolated containers.
 
-For a detailed explanation of the original architecture, see the [ARCHITECTURE.md](docs/ARCHITECTURE.md) file.
+For a detailed explanation of the original architectural principles, see the [ARCHITECTURE.md](docs/ARCHITECTURE.md) file.
 
 ## Getting Started
 
-Follow these instructions to build and run the NEXUS PoC on your local machine.
+Follow these instructions to build and run the enterprise-grade NEXUS system.
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
+- [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/install/)
 - An [OpenAI API Key](https://platform.openai.com/api-keys)
 
 ### Running the Application
@@ -43,40 +44,46 @@ Follow these instructions to build and run the NEXUS PoC on your local machine.
     ```
     OPENAI_API_KEY=your_openai_api_key_here
     ```
-    The `docker-compose.yml` file is configured to read this variable and pass it to the LLM adapter service.
 
-3.  **Build and run the services** using Docker Compose:
+3.  **Build and run the services**:
+    This command will build all service images and start the full NEXUS stack, including Neo4j and Redis.
     ```sh
     docker-compose -f infra/docker-compose.yml up --build
     ```
-    This command will build the Docker image for each service and start all the containers.
+    *Note: The first time you run this, Docker will download the Neo4j and Redis images, which may take a few moments.*
 
-### Testing the Endpoint
+### Testing the System
 
-Once the services are running, you can test the main query endpoint. Use a query that prompts the LLM to generate code to see the full workflow in action.
+Once all services are running, you must first populate the knowledge base.
 
-```sh
-curl -X POST http://localhost:5001/api/v1/query \
--H "Content-Type: application/json" \
--d '{
-    "user_id": "test-user",
-    "session_id": "session-123",
-    "query": "Can you write a python script that prints the first 5 prime numbers?"
-}'
-```
+1.  **Populate the Knowledge Retriever**:
+    Send a POST request to the `/populate` endpoint to load the sample data into Neo4j and FAISS.
+    ```sh
+    curl -X POST http://localhost:5003/populate
+    ```
 
-You should receive a JSON response from the orchestrator that includes the LLM's answer and the result from the execution sandbox.
+2.  **Query the Orchestrator**:
+    Now, you can send a query to the main endpoint. Use a query that leverages the populated knowledge to see the Graph-RAG pipeline in action.
+    ```sh
+    curl -X POST http://localhost:5001/api/v1/query \
+    -H "Content-Type: application/json" \
+    -d '{
+        "user_id": "enterprise-user",
+        "session_id": "session-456",
+        "query": "What is the relationship between the orchestrator and the memory layer?"
+    }'
+    ```
+    You should receive a professional, context-aware response from the LLM, informed by the hybrid search results from the knowledge retriever.
 
 ## Services
 
-The following services are included in this PoC:
-
-| Service                | Port | Description                                             |
-| ---------------------- | ---- | ------------------------------------------------------- |
-| **Orchestrator**       | 5001 | The main entry point and workflow coordinator.          |
-| Agent Manager          | 5002 | Selects agents based on the query. (Mock)               |
-| Knowledge Graph Mock   | 5003 | Simulates hybrid knowledge retrieval. (Mock)            |
-| Memory Layer           | 5004 | Stores and retrieves session history using Redis.       |
-| Execution Sandbox      | 5005 | Executes code in a controlled environment. (Mock)       |
-| LLM Adapter            | 5006 | Connects to OpenAI to generate responses.               |
-| **Redis**              | 6379 | In-memory data store for the Memory Layer.              |
+| Service                 | Port  | Description                                                         |
+| ----------------------- | ----- | ------------------------------------------------------------------- |
+| **Orchestrator**        | 5001  | The main entry point and advanced workflow coordinator.             |
+| **Knowledge Retriever** | 5003  | Enterprise Graph-RAG service with Neo4j and FAISS.                  |
+| **Memory Layer**        | 5004  | High-performance session memory using Redis.                        |
+| **Execution Sandbox**   | 5005  | Hardened, secure code execution using Docker-in-Docker.             |
+| **LLM Adapter**         | 5006  | Connects to OpenAI to generate intelligent responses.               |
+| **Neo4j**               | 7474  | Graph database for the knowledge retriever. (UI on port 7474)       |
+| **Redis**               | 6379  | In-memory data store for the Memory Layer.                          |
+| Agent Manager           | 5002  | Mock service, kept for structural consistency.                      |
