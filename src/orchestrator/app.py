@@ -27,15 +27,15 @@ def extract_code(text):
         return match.group(1)
     return None
 
-def format_knowledge_for_prompt(knowledge_context):
-    """Formats the rich context from the knowledge retriever for the LLM."""
-    prompt_context = "Relevant Documents (from vector search):\n"
-    for hit in knowledge_context.get('document_hits', []):
-        prompt_context += f"- ID: {hit.get('id')}, Score: {hit.get('score')}\n"
+def format_knowledge_for_prompt(knowledge_context: dict) -> str:
+    """Formats the rich context from the EnterpriseGraphRAG for the LLM."""
+    prompt_context = "Vector Search Results:\n"
+    for hit in knowledge_context.get('vector_search_results', []):
+        prompt_context += f"- Chunk ID: {hit.get('chunk_id')}, Score: {hit.get('score')}\n"
 
-    prompt_context += "\nRelated Concepts (from graph expansion):\n"
-    for expansion in knowledge_context.get('graph_expansions', []):
-        prompt_context += f"- {expansion.get('source')} -> {expansion.get('relationship')} -> {expansion.get('target')}\n"
+    prompt_context += "\nGraph Reasoning Results:\n"
+    for path in knowledge_context.get('graph_reasoning_results', []):
+        prompt_context += f"- Path: {' -> '.join(path.get('path', []))}, Explanation: {path.get('explanation')}\n"
 
     return prompt_context
 
@@ -63,7 +63,7 @@ def query_handler():
     # 2. Retrieve knowledge from the new enterprise-grade retriever
     try:
         knowledge_payload = {'query': query}
-        knowledge_response = requests.post(f"{KNOWLEDGE_RETRIEVER_URL}/hybrid_search", json=knowledge_payload)
+        knowledge_response = requests.post(f"{KNOWLEDGE_RETRIEVER_URL}/query", json=knowledge_payload)
         knowledge_context = knowledge_response.json()
         print("Orchestrator: Retrieved rich context from Knowledge Retriever.")
     except requests.exceptions.RequestException as e:
@@ -108,7 +108,7 @@ def query_handler():
         "query": query,
         "llm_answer": llm_answer,
         "execution_result": execution_result,
-        "knowledge_source": "Enterprise Graph-RAG Retriever"
+        "knowledge_source": "EnterpriseGraphRAG"
     }
 
     return jsonify(final_response)

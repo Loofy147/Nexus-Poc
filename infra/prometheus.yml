@@ -5,6 +5,9 @@ scrape_configs:
   - job_name: 'orchestrator'
     static_configs:
       - targets: ['orchestrator:5001']
+  - job_name: 'meta_controller'
+    static_configs:
+      - targets: ['meta_controller:6000']
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']

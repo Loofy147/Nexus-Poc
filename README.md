@@ -90,3 +90,41 @@ To fully realize the enterprise-grade vision outlined in the initial plan, the f
 | **Pyroscope**           | 4040   | **The Observability Layer.** Provides continuous profiling.         |
 | **Neo4j**               | 7474   | Graph database for the knowledge retriever.                         |
 | **Redis**               | 6379   | In-memory data store for the Memory Layer.                          |
+
+---
+
+## Enterprise-Grade Deployment (Kubernetes)
+
+While `docker-compose` is excellent for local development, a professional, enterprise-grade deployment requires a robust container orchestrator like Kubernetes. This section provides the foundation for deploying NEXUS to a production environment.
+
+### Prerequisites
+
+*   A running Kubernetes cluster.
+*   `kubectl` configured to connect to your cluster.
+*   [Istio](https://istio.io/latest/docs/setup/getting-started/) installed on your cluster for service mesh capabilities.
+
+### Deployment Steps
+
+1.  **Create the `nexus-secrets` Secret**:
+    The Kubernetes manifests reference a secret named `nexus-secrets` for sensitive data like API keys. To create this securely, use the provided helper script. This script will prompt you for the values and will not store them in your shell history.
+    ```sh
+    chmod +x infra/kubernetes/create-secrets.sh
+    ./infra/kubernetes/create-secrets.sh
+    ```
+
+2.  **Apply the Kubernetes Manifests**:
+    Apply the production configuration for the NEXUS system. This will create the `nexus-production` namespace and deploy the `meta-controller` with all its associated resources (HPA, Service, Network Policies, etc.).
+    ```sh
+    kubectl apply -f infra/kubernetes/nexus-production.yaml
+    ```
+
+3.  **Verify the Deployment**:
+    Check the status of the pods in the `nexus-production` namespace.
+    ```sh
+    kubectl get pods -n nexus-production
+    ```
+    You should see the `meta-controller` pods running.
+
+### Note on Full Deployment
+
+The provided `nexus-production.yaml` file is a professional, production-ready template for the `meta-controller` service. For a full production deployment of the entire NEXUS system, you would need to create similar high-quality, robust manifest files for all other services (`orchestrator`, `code_modifier`, `knowledge_retriever`, etc.), following the best practices established in this template.
