@@ -71,6 +71,15 @@ Once the **enterprise stack** is running, you can test the full self-improving l
     -   **Jaeger UI**: `http://localhost:16686`
     -   **Pyroscope UI**: `http://localhost:4040`
     -   **Prometheus UI**: `http://localhost:9090` (query `nexus_decisions_total`)
+    -   **Alertmanager UI**: `http://localhost:9093`
+
+## Enterprise Alerting
+
+The enterprise stack is pre-configured with a robust alerting pipeline. Prometheus monitors system metrics and fires alerts to Alertmanager based on predefined rules.
+
+-   **Alerting Rules**: Defined in `infra/config/prometheus/rules/alert.rules.yml`. You can add your own custom alerts here.
+-   **Alertmanager**: Receives alerts from Prometheus, deduplicates them, groups them, and routes them to the correct receiver (e.g., email, Slack, PagerDuty). The default configuration is in `infra/config/alertmanager/config.yml`.
+-   **Viewing Alerts**: Access the Alertmanager UI at `http://localhost:9093` to see currently firing alerts.
 
 ## Future Work
 
