@@ -43,6 +43,22 @@ This mode runs the entire NEXUS ecosystem, including the full data, observabilit
     ```
     *Note: This will download and start many services and may require significant system resources (e.g., 16GB+ of RAM is recommended).*
 
+### Developer Setup: Code Quality Hooks
+
+To ensure consistent code quality and automatically format code, this project uses `pre-commit`.
+
+1.  **Install pre-commit**:
+    ```sh
+    pip install -r requirements.txt
+    ```
+
+2.  **Install the Git hooks**:
+    ```sh
+    pre-commit install
+    ```
+
+Now, `black`, `isort`, `pylint`, and `bandit` will run automatically on every commit.
+
 ### Testing the Full OODA Loop
 
 Once the **enterprise stack** is running, you can test the full self-improving loop:

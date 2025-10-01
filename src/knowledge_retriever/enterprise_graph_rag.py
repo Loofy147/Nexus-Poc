@@ -1,14 +1,15 @@
-import os
-import numpy as np
-import faiss
 import json
-from neo4j import GraphDatabase
-from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-import spacy
+import os
 from typing import Dict, List
 
+import faiss
+import numpy as np
+import spacy
 from kg_reasoner import KnowledgeGraphReasoner
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from neo4j import GraphDatabase
+from sentence_transformers import SentenceTransformer
+
 
 class EnterpriseGraphRAG:
     """
@@ -19,37 +20,40 @@ class EnterpriseGraphRAG:
     def __init__(self, config: Dict):
         self.config = config
         self.neo4j_driver = GraphDatabase.driver(
-            config['neo4j_uri'],
-            auth=(config['neo4j_user'], config['neo4j_password'])
+            config["neo4j_uri"], auth=(config["neo4j_user"], config["neo4j_password"])
         )
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
         self.vector_dimension = self.embedding_model.get_sentence_embedding_dimension()
         self.index = faiss.IndexFlatL2(self.vector_dimension)
         self.index_to_chunk_id = {}
         self.chunk_id_counter = 0
 
         try:
-            self.nlp = spacy.load('en_core_web_sm')
+            self.nlp = spacy.load("en_core_web_sm")
             print("Enterprise Graph RAG: Spacy model loaded successfully.")
         except IOError:
-            print("Enterprise Graph RAG: Spacy model not found. Please run 'python -m spacy download en_core_web_sm'")
+            print(
+                "Enterprise Graph RAG: Spacy model not found. Please run 'python -m spacy download en_core_web_sm'"
+            )
             self.nlp = None
 
         self.kg_reasoner = KnowledgeGraphReasoner(self.neo4j_driver)
         print("Enterprise Graph RAG: Initialized.")
 
-    def populate_knowledge_graph(self, documents: List[str], metadata: List[Dict] = None):
+    def populate_knowledge_graph(
+        self, documents: List[str], metadata: List[Dict] = None
+    ):
         """
         Populates the knowledge graph from documents with entity extraction.
         """
         if not self.nlp:
-            print("Enterprise Graph RAG: Cannot populate knowledge graph, Spacy model not loaded.")
+            print(
+                "Enterprise Graph RAG: Cannot populate knowledge graph, Spacy model not loaded."
+            )
             return
 
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            separators=["\n\n", "\n", ". ", " ", ""]
+            chunk_size=1000, chunk_overlap=200, separators=["\n\n", "\n", ". ", " ", ""]
         )
 
         if metadata is None:
@@ -59,7 +63,9 @@ class EnterpriseGraphRAG:
             chunks = text_splitter.split(doc_text)
             for chunk in chunks:
                 doc_nlp = self.nlp(chunk)
-                entities = [{'text': ent.text, 'label': ent.label_} for ent in doc_nlp.ents]
+                entities = [
+                    {"text": ent.text, "label": ent.label_} for ent in doc_nlp.ents
+                ]
 
                 doc_id = self._store_chunk_in_neo4j(chunk, entities, metadata[i])
 
@@ -68,15 +74,19 @@ class EnterpriseGraphRAG:
                 self.index_to_chunk_id[self.chunk_id_counter] = doc_id
                 self.chunk_id_counter += 1
 
-        print(f"Enterprise Graph RAG: Knowledge graph populated with {len(documents)} documents, resulting in {self.chunk_id_counter} chunks.")
+        print(
+            f"Enterprise Graph RAG: Knowledge graph populated with {len(documents)} documents, resulting in {self.chunk_id_counter} chunks."
+        )
 
-    def _store_chunk_in_neo4j(self, chunk: str, entities: List[Dict], metadata: Dict) -> int:
+    def _store_chunk_in_neo4j(
+        self, chunk: str, entities: List[Dict], metadata: Dict
+    ) -> int:
         """Stores a text chunk and its extracted entities in Neo4j."""
         with self.neo4j_driver.session() as session:
             result = session.run(
                 "CREATE (c:Chunk {text: $text, metadata: $metadata}) RETURN id(c)",
                 text=chunk,
-                metadata=json.dumps(metadata)
+                metadata=json.dumps(metadata),
             )
             chunk_id = result.single()[0]
 
@@ -88,8 +98,8 @@ class EnterpriseGraphRAG:
                     MERGE (c)-[:CONTAINS_ENTITY]->(e)
                     """,
                     chunk_id=chunk_id,
-                    name=entity['text'],
-                    type=entity['label']
+                    name=entity["text"],
+                    type=entity["label"],
                 )
         return chunk_id
 
@@ -103,7 +113,7 @@ class EnterpriseGraphRAG:
 
         # 1. Entity Extraction
         doc_nlp = self.nlp(question)
-        entities = [{'text': ent.text, 'label': ent.label_} for ent in doc_nlp.ents]
+        entities = [{"text": ent.text, "label": ent.label_} for ent in doc_nlp.ents]
         print(f"Enterprise Graph RAG: Extracted entities: {entities}")
 
         # 2. Vector Search
@@ -114,7 +124,9 @@ class EnterpriseGraphRAG:
         for i, idx in enumerate(indices[0]):
             chunk_id = self.index_to_chunk_id.get(idx)
             if chunk_id:
-                vector_hits.append({"chunk_id": chunk_id, "score": float(distances[0][i])})
+                vector_hits.append(
+                    {"chunk_id": chunk_id, "score": float(distances[0][i])}
+                )
 
         print(f"Enterprise Graph RAG: Found {len(vector_hits)} vector hits.")
 
@@ -127,7 +139,7 @@ class EnterpriseGraphRAG:
             "extracted_entities": entities,
             "vector_search_results": vector_hits,
             "graph_reasoning_results": reasoning_chain,
-            "answer": "Combined results from vector and graph search. Ready for LLM synthesis."
+            "answer": "Combined results from vector and graph search. Ready for LLM synthesis.",
         }
 
         print("Enterprise Graph RAG: Advanced query pipeline complete.")

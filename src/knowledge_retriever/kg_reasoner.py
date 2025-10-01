@@ -1,5 +1,7 @@
 from typing import Dict, List
+
 from neo4j import GraphDatabase
+
 
 class KnowledgeGraphReasoner:
     """
@@ -11,14 +13,18 @@ class KnowledgeGraphReasoner:
         self.driver = neo4j_driver
         print("Knowledge Graph Reasoner: Initialized.")
 
-    def multi_hop_reasoning(self, entities: List[Dict], max_hops: int = 1) -> List[Dict]:
+    def multi_hop_reasoning(
+        self, entities: List[Dict], max_hops: int = 1
+    ) -> List[Dict]:
         """
         Performs a graph traversal to find connected entities.
         This initial version performs a 1-hop search.
         """
-        print(f"Knowledge Graph Reasoner: Performing {max_hops}-hop reasoning for entities: {entities}")
+        print(
+            f"Knowledge Graph Reasoner: Performing {max_hops}-hop reasoning for entities: {entities}"
+        )
         reasoning_chain = []
-        entity_names = [entity['text'] for entity in entities]
+        entity_names = [entity["text"] for entity in entities]
 
         if not entity_names:
             return []
@@ -55,12 +61,16 @@ class KnowledgeGraphReasoner:
             result = session.run(simple_query, entity_names=entity_names)
 
             for record in result:
-                reasoning_chain.append({
-                    "path": [record["source"], record["target"]],
-                    "relations": [record["relationship"]],
-                    "confidence": 0.9, # Placeholder confidence
-                    "explanation": f"{record['source']} is related to {record['target']} through a shared document."
-                })
+                reasoning_chain.append(
+                    {
+                        "path": [record["source"], record["target"]],
+                        "relations": [record["relationship"]],
+                        "confidence": 0.9,  # Placeholder confidence
+                        "explanation": f"{record['source']} is related to {record['target']} through a shared document.",
+                    }
+                )
 
-        print(f"Knowledge Graph Reasoner: Found {len(reasoning_chain)} reasoning paths.")
+        print(
+            f"Knowledge Graph Reasoner: Found {len(reasoning_chain)} reasoning paths."
+        )
         return reasoning_chain

@@ -1,4 +1,5 @@
 import os
+
 from flask import Flask, jsonify, request
 
 # Import the new enterprise-grade engine
@@ -10,11 +11,12 @@ app = Flask(__name__)
 # This can be configured via a file, but for now, we use defaults.
 config = {
     "pylint_threshold": 8.0,
-    "min_security_score": 95.0 # Placeholder for a more complex scoring system
+    "min_security_score": 95.0,  # Placeholder for a more complex scoring system
 }
 code_modifier_engine = EnterpriseCodeModifier(config=config)
 
-@app.route('/propose', methods=['POST'])
+
+@app.route("/propose", methods=["POST"])
 def propose_modification():
     """
     Receives a code modification proposal from the meta_controller
@@ -30,7 +32,9 @@ def propose_modification():
     # Trigger the full pipeline
     result = code_modifier_engine.apply_modification(modification_request)
 
-    print(f"Code Modifier Service: Pipeline finished with status: {result.get('status')}")
+    print(
+        f"Code Modifier Service: Pipeline finished with status: {result.get('status')}"
+    )
 
     if result.get("status") == "SUCCESS":
         return jsonify(result), 200
@@ -38,5 +42,8 @@ def propose_modification():
         # Return a server error if the modification pipeline failed
         return jsonify(result), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=6001)
+
+if __name__ == "__main__":
+    # Note: Binding to 0.0.0.0 is for containerized environments.
+    # In a production deployment, this should be a configurable, specific interface.
+    app.run(host="0.0.0.0", port=6001)  # nosec
