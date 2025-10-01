@@ -16,6 +16,19 @@ services:
     depends_on:
       - prometheus
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.35
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+  pyroscope:
+    image: pyroscope/pyroscope:0.38.1
+    ports:
+      - "4040:4040"
+
   neo4j:
     image: neo4j:4.4
     ports:
@@ -37,6 +50,8 @@ services:
       - "5001:5001"
     environment:
       - FLASK_APP=app.py
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
       - KNOWLEDGE_RETRIEVER_URL=http://knowledge_retriever:5003
       - MEMORY_LAYER_URL=http://memory_layer:5004
       - EXECUTION_SANDBOX_URL=http://execution_sandbox:5005
@@ -47,11 +62,8 @@ services:
       - execution_sandbox
       - llm_adapter_mock
       - prometheus
-
-  agent_manager: # This service is now largely vestigial but kept for structural consistency
-    build: ../src/agent_manager
-    ports:
-      - "5002:5002"
+      - jaeger
+      - pyroscope
 
   knowledge_retriever:
     build: ../src/knowledge_retriever
@@ -102,6 +114,8 @@ services:
     build: ../src/code_modifier
     ports:
       - "6001:6001"
+    environment:
+      - GIT_REPO_PATH=/app
     volumes:
       - ../src:/app/src_code # Mount the host's src directory to give it modification access
 

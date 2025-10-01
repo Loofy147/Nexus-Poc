@@ -4,12 +4,21 @@ import json
 import pandas as pd
 import numpy as np
 from flask import Flask, jsonify, request
+from prometheus_flask_exporter import PrometheusMetrics, Counter
 
 # Import the new enterprise-grade modules
 from causal_engine import EnterpriseCausalEngine
 from risk_assessor import EnterpriseRiskAssessor
 
 app = Flask(__name__)
+metrics = PrometheusMetrics(app)
+
+# Define a custom business metric to track meta-controller decisions
+decisions_total = Counter(
+    'nexus_decisions_total',
+    'Total decisions made by the meta-controller',
+    ['decision_type', 'outcome']
+)
 
 PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
 CODE_MODIFIER_URL = os.environ.get("CODE_MODIFIER_URL", "http://code_modifier:6001")
@@ -108,7 +117,10 @@ def analyze_and_act():
     print(f"Meta Controller: Causal analysis complete. Decision: {json.dumps(causal_decision)}")
 
     # 4. ACT: Propose modification if intervention is recommended
-    if causal_decision.get("action") == "APPLY_INTERVENTION":
+    action = causal_decision.get("action", "UNKNOWN")
+    decisions_total.labels(decision_type=current_objective.get("goal"), outcome=action).inc()
+
+    if action == "APPLY_INTERVENTION":
         print("Meta Controller: ACTING on decision. Proposing code modification.")
         proposal = {
             "service": "orchestrator",
@@ -117,7 +129,7 @@ def analyze_and_act():
         }
         propose_modification(proposal)
     else:
-        print("Meta Controller: ACTING on decision. No intervention required.")
+        print(f"Meta Controller: ACTING on decision. Outcome is '{action}'. No intervention required.")
 
     print("--- META-CONTROLLER: ANALYSIS & DECISION CYCLE COMPLETE ---\n")
 

@@ -2,6 +2,11 @@ import os
 import requests
 import re
 import json
+
+# Import and setup observability tools before anything else
+from observability import setup_observability
+setup_observability()
+
 from flask import Flask, jsonify, request
 from prometheus_flask_exporter import PrometheusMetrics
 
@@ -10,7 +15,6 @@ metrics = PrometheusMetrics(app)
 
 # --- Service URLs ---
 # Updated to reflect the new enterprise-grade services
-AGENT_MANAGER_URL = os.environ.get("AGENT_MANAGER_URL", "http://localhost:5002")
 KNOWLEDGE_RETRIEVER_URL = os.environ.get("KNOWLEDGE_RETRIEVER_URL", "http://knowledge_retriever:5003")
 MEMORY_LAYER_URL = os.environ.get("MEMORY_LAYER_URL", "http://localhost:5004")
 EXECUTION_SANDBOX_URL = os.environ.get("EXECUTION_SANDBOX_URL", "http://localhost:5005")

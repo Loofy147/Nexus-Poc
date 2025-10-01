@@ -10,3 +10,4 @@ networkx==3.1
 statsmodels==0.13.5
 z3-solver==4.12.1.0
 arch==5.3.1
+prometheus-flask-exporter==0.20.3
