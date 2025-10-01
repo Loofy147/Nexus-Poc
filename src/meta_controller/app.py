@@ -7,7 +7,7 @@ import requests
 from advanced_metrics import AdvancedMetricsCollector
 
 # Import the new enterprise-grade modules
-# from causal_engine import EnterpriseCausalEngine # MOCKED
+from causal_engine import EnterpriseCausalEngine
 from flask import Flask, jsonify, request
 from prometheus_flask_exporter import Counter, PrometheusMetrics
 from risk_assessor import EnterpriseRiskAssessor
@@ -26,7 +26,7 @@ PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
 CODE_MODIFIER_URL = os.environ.get("CODE_MODIFIER_URL", "http://code_modifier:6001")
 
 # Instantiate the core intelligence engines
-# causal_engine = EnterpriseCausalEngine() # MOCKED
+causal_engine = EnterpriseCausalEngine()
 metrics_collector = AdvancedMetricsCollector(prometheus_url=PROMETHEUS_URL)
 
 # In-memory storage for the current objective
@@ -121,13 +121,11 @@ def analyze_and_act():
         print("--- META-CONTROLLER: CYCLE END ---\n")
         return
 
-    # 3. DECIDE (Causal Inference) - MOCKED
-    causal_decision = {
-        "action": "APPLY_INTERVENTION",
-        "intervention": current_objective.get("intervention"),
-        "target_metric": current_objective.get("target_metric"),
-        "expected_effect": 0.15,  # Dummy value
-    }
+    # 3. DECIDE (Causal Inference)
+    causal_decision = causal_engine.analyze_and_decide(
+        metrics_data=simulated_historical_data,
+        strategic_goal=current_objective,
+    )
 
     print(
         f"Meta Controller: Causal analysis complete. Decision: {json.dumps(causal_decision)}"
