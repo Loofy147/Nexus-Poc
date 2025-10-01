@@ -11,6 +11,7 @@ pytest==8.2.2
 Flask==2.2.5
 requests==2.32.4
 redis==4.4.4
+hvac==2.3.0
 
 # Orchestrator & Observability
 prometheus-flask-exporter==0.20.3
